@@ -1,0 +1,16 @@
+# Application Configuration
+.env
+
+# Dependencies
+node_modules
+
+# Compiled Files
+lib
+
+# IDE
+.vscode/**
+!.vscode/launch.json
+!.vscode/tasks.json
+
+## Logs
+yarn-*.log

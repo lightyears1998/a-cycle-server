@@ -1,0 +1,7 @@
+root = true
+
+[src/**.ts]
+indent_size = 2
+
+[cspell.json]
+indent_size = 4

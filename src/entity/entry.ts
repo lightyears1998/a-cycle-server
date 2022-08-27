@@ -2,15 +2,19 @@ import {
   Column,
   CreateDateColumn,
   Entity,
+  ManyToOne,
   PrimaryGeneratedColumn,
-  UpdateDateColumn,
 } from "typeorm";
 import { EntryContent } from "./entry-content";
+import { User } from "./user";
 
 @Entity()
 export class Entry {
   @PrimaryGeneratedColumn("uuid")
   uid!: string;
+
+  @ManyToOne(() => User, { nullable: false })
+  owner?: User;
 
   @Column({ default: false })
   isRemoved!: boolean;
@@ -24,6 +28,9 @@ export class Entry {
   @CreateDateColumn()
   createdAt!: Date;
 
-  @UpdateDateColumn()
+  @Column({ nullable: false })
   updatedAt!: Date;
+
+  @Column({ nullable: false })
+  updatedBy!: string;
 }

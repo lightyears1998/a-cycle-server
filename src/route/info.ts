@@ -2,6 +2,8 @@ import Router from "koa-router";
 import fs from "fs-extra";
 import type { PackageJson } from "type-fest";
 
+const router = new Router();
+
 let appName = "";
 let appDescription = "";
 let appVersion = "";
@@ -16,15 +18,12 @@ let appVersion = "";
   appVersion = String(packageJSON.version);
 })();
 
-export const setupRoute = (router: Router) => {
-  const infoRoute: Router.IMiddleware = (ctx) => {
-    ctx.body = {
-      name: appName,
-      description: appDescription,
-      version: appVersion,
-    };
+router.all("/", (ctx) => {
+  ctx.body = {
+    name: appName,
+    description: appDescription,
+    version: appVersion,
   };
+});
 
-  router.get("/", infoRoute);
-  router.get("/app/info", infoRoute);
-};
+export default router;

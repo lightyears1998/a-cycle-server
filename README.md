@@ -1,4 +1,3 @@
 # A Cycle Server
 
-- 一个强介入的 GTD 工具，但尝试将子功能解耦合。
-- 一个可堪一用但尚有性能提升空间的跨设备内容同步算法。
+It serves as the backend of [A Cycle Client](https://github.com/lightyears1998/a-cycle-client) to provide centralized data persistence and cross-device data synchronization.

@@ -1,3 +1,7 @@
+import debug from "debug";
+
+export const logger = debug("a-cycle-server");
+
 export function isTrue(val: string | undefined) {
   if (typeof val === "undefined") {
     return false;

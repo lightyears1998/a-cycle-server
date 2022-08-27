@@ -1,62 +1,51 @@
 import "reflect-metadata";
 import koa from "koa";
-import dotenv from "dotenv";
-import { DataSource } from "typeorm";
-import { isTrue } from "./util";
-import Router from "koa-router";
+import { logger } from "./util";
 import responseTimeMiddleware from "koa-response-time";
 import compressMiddleware from "koa-compress";
 import corsMiddleware from "@koa/cors";
-import staticMiddleware from "koa-static";
-import fs from "fs-extra";
-import { setupRoutes } from "./route";
+import { setupRouter } from "./route";
+import bodyParser from "koa-bodyparser";
+import Router from "koa-router";
+import Container from "typedi";
+import { SERVER_HOST, SERVER_PORT } from "./env";
 
-dotenv.config();
-
-async function setupDatabase() {
-  await new DataSource({
-    type: "postgres",
-    host: process.env.PG_HOST,
-    port: Number(process.env.PG_PORT) || 5432,
-    database: process.env.PG_DATABASE || "acycle",
-    username: process.env.PG_USERNAME || "acycle",
-    password: process.env.PG_PASSWORD,
-    logging: isTrue(process.env.DEV_DATABASE_LOGGING),
-    synchronize: isTrue(process.env.DEV_DATABASE_SYNC),
-    entities: [`${__dirname}/entity/**/*.{ts,js}`],
-  }).initialize();
+async function setupEnvironmentVariables() {
+  await import("./env");
+  logger("Environment variables setup.");
 }
 
-async function setupRouter(): Promise<Router> {
-  const router = new Router();
-  setupRoutes(router);
-  return router;
+async function setupDatabase() {
+  await (await import("./db")).dataSource.initialize();
+  logger("Database setup.");
 }
 
 async function setupServer() {
-  const port = Number(process.env.SERVER_PORT) || 5280;
-  const host = process.env.SERVER_HOST || "localhost";
+  const port = Container.get(SERVER_PORT);
+  const host = Container.get(SERVER_HOST);
 
   const server = new koa();
   server.use(responseTimeMiddleware({ hrtime: true }));
   server.use(corsMiddleware({ credentials: true }));
+  server.use(bodyParser());
   server.use(compressMiddleware());
 
-  const router = await setupRouter();
+  const router = new Router();
+  setupRouter(router);
   server.use(router.routes());
   server.use(router.allowedMethods());
 
   return new Promise<void>((resolve) => {
     server.listen(port, host, () => {
-      console.log(`Server listening at ${host}:${port}`);
+      logger(`Server listening at ${host}:${port}`);
       resolve();
     });
   });
 }
 
 async function bootstrap() {
-  await setupDatabase();
-  await setupServer();
+  await setupEnvironmentVariables();
+  await Promise.allSettled([setupDatabase(), setupServer()]);
 }
 
 bootstrap();

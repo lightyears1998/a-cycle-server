@@ -80,10 +80,11 @@ export function authenticationMiddleware(
     }
 
     if (pass) {
-      next();
+      await next();
     } else {
       throw new UserAuthenticationError();
     }
   };
+
   return middleware;
 }

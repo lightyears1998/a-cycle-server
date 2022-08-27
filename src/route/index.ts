@@ -3,6 +3,8 @@ import { BaseServerError } from "./error";
 import infoRouter from "./info";
 import userRouter from "./user";
 
+export const PAGE_SIZE = 50;
+
 class Route {
   path: string;
   router: Router;

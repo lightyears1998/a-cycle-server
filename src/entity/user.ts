@@ -13,6 +13,9 @@ export class User {
   @PrimaryGeneratedColumn("increment")
   id!: string;
 
+  @Column({ default: false })
+  isRemoved!: boolean;
+
   @Column()
   username!: string;
 

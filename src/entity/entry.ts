@@ -1,3 +1,4 @@
+import moment from "moment";
 import {
   Column,
   CreateDateColumn,
@@ -5,7 +6,6 @@ import {
   ManyToOne,
   PrimaryGeneratedColumn,
 } from "typeorm";
-import { EntryContent } from "./entry-content";
 import { User } from "./user";
 
 @Entity()
@@ -20,10 +20,37 @@ export class Entry {
   isRemoved!: boolean;
 
   @Column({ nullable: false })
-  contentType!: string;
+  type!: string;
 
-  @Column(() => EntryContent)
-  content?: EntryContent;
+  @Column()
+  title!: string;
+
+  @Column()
+  description!: string;
+
+  @Column({ nullable: false })
+  isTransient!: boolean;
+
+  @Column({ type: "timestamptz", nullable: true })
+  startDate!: Date | null;
+
+  @Column({ type: "timestamptz", nullable: true })
+  endDate!: Date | null;
+
+  @Column({ default: "{}" })
+  metadata!: string;
+
+  get timeSpan() {
+    if (this.isTransient) {
+      return 0;
+    }
+
+    if (this.endDate && this.startDate) {
+      return moment(this.endDate).diff(this.startDate);
+    }
+
+    throw new Error("Can't calculate entry time span.");
+  }
 
   @CreateDateColumn()
   createdAt!: Date;

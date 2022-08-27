@@ -13,6 +13,9 @@ export class History {
   @PrimaryGeneratedColumn("increment")
   id!: number;
 
+  @Column({ default: 0 })
+  lastId!: number;
+
   @ManyToOne(() => User)
   user!: User;
 

@@ -22,10 +22,10 @@ import {
 } from "../env";
 import { UserService } from "../service/user";
 import jwt from "jsonwebtoken";
-import { v4 as uuid } from "uuid";
 import { EntryService } from "../service/entry";
 import { Entry } from "../entity/entry";
-import { DeepPartial } from "typeorm";
+import { In } from "typeorm";
+import { PAGE_SIZE } from ".";
 
 const router = new Router();
 
@@ -93,7 +93,9 @@ router.post("/:userId/jwt-tokens", async (ctx) => {
   }
 
   const manager = getManager();
-  const user = await manager.findOne(User, { where: { id: userId } });
+  const user = await manager.findOne(User, {
+    where: { id: userId, isRemoved: false },
+  });
 
   if (!user) {
     throw new UserNotFoundError();
@@ -126,7 +128,9 @@ router.get("/:userId/password/reset", async (ctx) => {
   }
 
   const manager = getManager();
-  let user = await manager.findOne(User, { where: { id: userId } });
+  let user = await manager.findOne(User, {
+    where: { id: userId, isRemoved: false },
+  });
   if (!user) {
     throw new UserNotFoundError();
   }
@@ -146,6 +150,7 @@ router.get("/:userId/password/reset", async (ctx) => {
 const protectedRouter = new Router();
 
 protectedRouter.use(
+  "/:userId",
   authentication(AuthenticationPolicy.SAME_USER_ID_FROM_PATH_PARAM)
 );
 
@@ -161,7 +166,9 @@ protectedRouter.put("/:userId/password", async (ctx) => {
   Container.get(UserService).checkPassword(password);
 
   const manager = getManager();
-  let user = await manager.findOne(User, { where: { id: userId } });
+  let user = await manager.findOne(User, {
+    where: { id: userId, isRemoved: false },
+  });
   if (!user) {
     throw new UserNotFoundError();
   }
@@ -176,48 +183,122 @@ protectedRouter.put("/:userId/password", async (ctx) => {
 });
 
 // Get entries
-protectedRouter.get("/:userId/entries", (ctx) => {
-  console.log(ctx.query);
+protectedRouter.get("/:userId/entries", async (ctx) => {
+  const { userId } = ctx.params;
+  const { uid, page = 1 } = ctx.query;
 
-  ctx.body = "ok";
+  const manager = getManager();
+  const entries = await manager.find(Entry, {
+    where: {
+      owner: {
+        id: userId,
+      },
+      uid: uid ? In(Array(uid).flat()) : undefined,
+      isRemoved: false,
+    },
+    skip: (Number(page) - 1) * PAGE_SIZE,
+    take: PAGE_SIZE,
+  });
+
+  ctx.body = { entries };
 });
 
 // Get an entry
-protectedRouter.get("/:userId/entries/:entryId", (ctx) => {
-  return;
+protectedRouter.get("/:userId/entries/:entryId", async (ctx) => {
+  const { userId, entryId } = ctx.params;
+
+  const manager = getManager();
+  const entry = await manager.findOne(Entry, {
+    where: {
+      uid: entryId,
+      owner: {
+        id: userId,
+      },
+      isRemoved: false,
+    },
+  });
+
+  ctx.body = {
+    entry,
+  };
 });
 
 // Create an entry
 protectedRouter.post("/:userId/entries", async (ctx) => {
   const { userId } = ctx.params;
-  const { contentType, content, updatedAt, updatedBy } = ctx.request.body;
-
-  let entry: DeepPartial<Entry> = {
-    contentType,
-    content,
-    updatedAt,
-    updatedBy,
-  };
-  entry.owner = {
-    id: userId,
-  };
-
-  Container.get(EntryService).checkEntry(entry);
 
   const manager = getManager();
+
+  let entry = manager.create(
+    Entry,
+    Object.assign({}, ctx.request.body, {
+      owner: { id: userId } as Partial<User>,
+    })
+  );
+
+  Container.get(EntryService).checkEntry(entry);
   entry = await manager.save(entry);
 
   ctx.body = { entry };
 });
 
 // Update an entry
-protectedRouter.put("/:userId/entries", (ctx) => {
-  return;
+protectedRouter.put("/:userId/entries/:entryId", async (ctx) => {
+  const { userId, entryId } = ctx.params;
+
+  const manager = getManager();
+
+  let entry = await manager.findOne(Entry, {
+    where: {
+      uid: entryId,
+      owner: {
+        id: userId,
+      },
+      isRemoved: false,
+    },
+  });
+  if (!entry) {
+    ctx.body = {
+      entry: {},
+    };
+    return;
+  }
+
+  Object.assign(entry, ctx.request.body, {
+    uid: entryId,
+    owner: { id: userId } as Partial<User>,
+  });
+
+  entry = await manager.save(entry);
+  ctx.body = {
+    entry,
+  };
 });
 
 // Remove an entry
-protectedRouter.del("/:userId/entries/:entryId", (ctx) => {
-  return;
+protectedRouter.del("/:userId/entries/:entryId", async (ctx) => {
+  const { userId, entryId } = ctx.params;
+
+  const manager = getManager();
+  const entry = await manager.findOne(Entry, {
+    where: { uid: entryId, owner: { id: userId }, isRemoved: false },
+    relations: ["owner"],
+  });
+
+  if (!entry) {
+    ctx.body = {
+      history: null,
+    };
+    return;
+  }
+
+  const history = await Container.get(EntryService).removeEntry(entry);
+  ctx.body = {
+    history: {
+      id: history.id,
+      date: history.date,
+    },
+  };
 });
 
 // Get metadata for syncing entries across clients (sync-recent algorithm)

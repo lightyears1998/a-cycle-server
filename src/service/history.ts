@@ -72,4 +72,21 @@ export class HistoryService {
     this.queue.push(unwrittenHistory);
     this.processQueue();
   }
+
+  async locateHistoryCursor(
+    unverifiedHistoryCursor: Partial<History>
+  ): Promise<History | null> {
+    const cursor = await this.manager.findOne(History, {
+      where: {
+        user: Object(unverifiedHistoryCursor.user),
+        id: Number(unverifiedHistoryCursor.id),
+        entryId: String(unverifiedHistoryCursor.entryId),
+        entryUpdatedAt: new Date(
+          String(unverifiedHistoryCursor.entryUpdatedAt)
+        ),
+        entryUpdatedBy: String(unverifiedHistoryCursor.entryUpdatedBy),
+      },
+    });
+    return cursor;
+  }
 }

@@ -1,5 +1,6 @@
 import Router, { IMiddleware } from "koa-router";
 import { ServerError } from "../error";
+import { logger } from "../util";
 import appInfoRouter from "./app-info";
 import usersRouter from "./users";
 
@@ -34,7 +35,7 @@ export function setupRouter(router: Router) {
           };
         }
       } else {
-        throw err;
+        logger(err);
       }
     }
   };
@@ -48,6 +49,11 @@ export function setupRouter(router: Router) {
       if (typeof ctx.body === "object") {
         if ("errors" in ctx.body || "payload" in ctx.body) {
           ctx.body.errors = ctx.body.errors || [];
+          for (let i = 0; i < ctx.body.errors.length; ++i) {
+            if (ctx.body.errors[i] instanceof ServerError) {
+              ctx.body.errors[i] = ctx.body.errors[i].constructor.name;
+            }
+          }
           ctx.body.payload = ctx.body.payload || {};
         } else {
           ctx.body = {

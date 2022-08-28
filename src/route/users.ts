@@ -7,6 +7,7 @@ import bcrypt, { genSalt } from "bcrypt";
 import {
   AdminTokenAuthenticationError,
   BadParameterError,
+  HistoryCursorMismatchError,
   UserAuthenticationError,
   UsernameAlreadyRegisteredError,
   UserNotFoundError,
@@ -24,8 +25,11 @@ import { UserService } from "../service/user";
 import jwt from "jsonwebtoken";
 import { EntryService } from "../service/entry";
 import { Entry } from "../entity/entry";
-import { In } from "typeorm";
+import { History } from "../entity/history";
+import { In, MoreThan } from "typeorm";
 import { PAGE_SIZE } from ".";
+import { HistoryService } from "../service/history";
+import { Client } from "../entity/client";
 
 const router = new Router();
 
@@ -54,11 +58,11 @@ router.post("/", async (ctx) => {
   }
 
   if (!password) {
-    throw new BadParameterError("Password is required.");
+    throw new BadParameterError("`password` is required.");
   }
 
   if (!username) {
-    throw new BadParameterError("Username is required.");
+    throw new BadParameterError("`username` is required.");
   }
 
   Container.get(UserService).checkPassword(password);
@@ -87,7 +91,7 @@ router.post("/:userId/jwt-tokens", async (ctx) => {
   const { password } = ctx.request.body;
 
   if (!password) {
-    throw new BadParameterError("Password is required.");
+    throw new BadParameterError("`password` is required.");
   }
 
   const manager = getManager();
@@ -114,7 +118,7 @@ router.get("/:userId/password/reset", async (ctx) => {
   const { adminToken, password } = ctx.request.body;
 
   if (!adminToken) {
-    throw new BadParameterError("AdminToken must be provided.");
+    throw new BadParameterError("`adminToken` must be provided.");
   }
 
   if (adminToken !== Container.get(ADMIN_TOKEN)) {
@@ -122,7 +126,7 @@ router.get("/:userId/password/reset", async (ctx) => {
   }
 
   if (!password) {
-    throw new BadParameterError("Password is required.");
+    throw new BadParameterError("`password` is required.");
   }
 
   const manager = getManager();
@@ -158,7 +162,7 @@ protectedRouter.put("/:userId/password", async (ctx) => {
   const { password } = ctx.request.body;
 
   if (!password) {
-    throw new BadParameterError("Password is required.");
+    throw new BadParameterError("`password` is required.");
   }
 
   Container.get(UserService).checkPassword(password);
@@ -301,11 +305,81 @@ protectedRouter.del("/:userId/entries/:entryId", async (ctx) => {
 });
 
 // Get metadata for syncing entries across clients (sync-recent algorithm)
-protectedRouter.get("/:userId/sync-recent", (ctx) => {
+protectedRouter.get("/:userId/sync-recent", async (ctx) => {
   const { userId } = ctx.params;
+  const { clientId } = ctx.request.body;
+  let {
+    serverHistoryCursor: unverifiedServerHistoryCursor,
+    clientHistories,
+    clientEntries,
+  } = ctx.request.body;
+
+  if (!clientId) {
+    throw new BadParameterError("`clientId` is required.");
+  }
+
+  unverifiedServerHistoryCursor = Object.assign(
+    {},
+    unverifiedServerHistoryCursor,
+    { user: { id: userId } }
+  );
+
   ctx.body = {
-    userId,
+    errors: [],
+    payload: {
+      clientHistoryCursor: {},
+      requestingClientEntryIds: [],
+      serverHistories: [],
+    },
   };
+
+  const manager = getManager();
+  const historyService = Container.get(HistoryService);
+
+  {
+    // Handle serverHistoryCursor and produce serverHistories
+    const localHistoryCursor = await historyService.locateHistoryCursor(
+      unverifiedServerHistoryCursor
+    );
+
+    if (!localHistoryCursor) {
+      ctx.body.errors.push(new HistoryCursorMismatchError());
+    } else {
+      ctx.body.payload.serverHistories = await manager.find(History, {
+        where: {
+          id: MoreThan(localHistoryCursor.id),
+          user: {
+            id: userId,
+          },
+        },
+        take: PAGE_SIZE,
+      });
+    }
+  }
+
+  {
+    // Handle client histories,
+    // and produce client history cursor and request client entries
+    let client = await manager.findOne(Client, {
+      where: {
+        uid: clientId,
+        user: {
+          id: userId,
+        },
+      },
+    });
+
+    if (!client) {
+      client = await manager.save(client);
+    }
+  }
+
+  {
+    // handle client entries
+    for (const entry of clientEntries) {
+      console.log(entry);
+    }
+  }
 });
 
 // Get metadata for syncing entries across clients (sync-full algorithm)

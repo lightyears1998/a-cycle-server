@@ -13,3 +13,6 @@ export class UserAuthenticationError extends ServerError {}
 export class UsernameAlreadyRegisteredError extends ServerError {}
 
 export class EntryInvalidError extends ServerError {}
+
+export class HistoryCursorMismatchError extends ServerError {}
+export class HistoryChainBrokenError extends ServerError {}

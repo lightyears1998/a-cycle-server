@@ -86,8 +86,6 @@ router.post("/:userId/jwt-tokens", async (ctx) => {
   const { userId } = ctx.params;
   const { password } = ctx.request.body;
 
-  console.log(userId, ctx.request.body);
-
   if (!password) {
     throw new BadParameterError("Password is required.");
   }
@@ -303,13 +301,19 @@ protectedRouter.del("/:userId/entries/:entryId", async (ctx) => {
 });
 
 // Get metadata for syncing entries across clients (sync-recent algorithm)
-protectedRouter.get("/:userId/sync-recent", (_ctx) => {
-  return;
+protectedRouter.get("/:userId/sync-recent", (ctx) => {
+  const { userId } = ctx.params;
+  ctx.body = {
+    userId,
+  };
 });
 
 // Get metadata for syncing entries across clients (sync-full algorithm)
-protectedRouter.get("/:userId/sync-full", (_ctx) => {
-  return;
+protectedRouter.get("/:userId/sync-full", (ctx) => {
+  const { userId } = ctx.params;
+  ctx.body = {
+    userId,
+  };
 });
 
 router.use(protectedRouter.routes(), protectedRouter.allowedMethods());

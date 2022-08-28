@@ -7,7 +7,7 @@ import corsMiddleware from "@koa/cors";
 import { setupRouter } from "./route";
 import bodyParser from "koa-bodyparser";
 import Router from "koa-router";
-import Container from "typedi";
+import { Container } from "typedi";
 import { SERVER_HOST, SERVER_ID, SERVER_PORT } from "./env";
 
 async function setupEnvironmentVariables() {

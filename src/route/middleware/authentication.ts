@@ -1,8 +1,9 @@
 import { Middleware } from "koa";
 import { Container } from "typedi";
-import { JWT_SECRET_TOKEN } from "../env";
-import { UserAuthenticationError } from "../error";
+import { JWT_SECRET_TOKEN } from "../../env";
+import { UserAuthenticationError } from "../../error";
 import jwt, { JsonWebTokenError } from "jsonwebtoken";
+import { getJwtTokenFromHttpAuthenticationHeader } from "../../util";
 
 export enum AuthenticationPolicy {
   NONE,
@@ -20,8 +21,8 @@ export function authenticationMiddleware(
     if (policy !== AuthenticationPolicy.NONE) {
       const authorizationHeader = ctx.request.header.authorization;
       if (authorizationHeader) {
-        const groups = /^Bearer (.*)$/gi.exec(authorizationHeader);
-        const token = groups && groups[1];
+        const token =
+          getJwtTokenFromHttpAuthenticationHeader(authorizationHeader);
         if (token) {
           try {
             jwtPayload = jwt.verify(token, Container.get(JWT_SECRET_TOKEN));

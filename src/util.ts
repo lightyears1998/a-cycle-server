@@ -21,6 +21,14 @@ export function isTrue(val: string | undefined) {
   return false;
 }
 
+export function getJwtTokenFromHttpAuthenticationHeader(
+  authorizationHeader: string
+): string | null {
+  const groups = /^Bearer (.*)$/gi.exec(authorizationHeader);
+  const token = groups && groups[1];
+  return token;
+}
+
 export function isDevelopmentEnvironment() {
   return process.env.NODE_ENV === "development";
 }

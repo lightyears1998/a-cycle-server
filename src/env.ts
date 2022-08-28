@@ -10,8 +10,11 @@ dotenv.config();
  */
 export const SERVER_ID = new Token<string>("SERVER_ID");
 
-export const SERVER_PORT = new Token<number>("SERVER_PORT");
-Container.set(SERVER_PORT, Number(process.env.SERVER_PORT) || 5280);
+export const SERVER_HTTP_PORT = new Token<number>("SERVER_HTTP_PORT");
+Container.set(SERVER_HTTP_PORT, Number(process.env.SERVER_HTTP_PORT) || 5280);
+
+export const SERVER_WS_PORT = new Token<number>("SERVER_WS_PORT");
+Container.set(SERVER_WS_PORT, Number(process.env.SERVER_WS_PORT || 5281));
 
 export const SERVER_HOST = new Token<string>("SERVER_HOST");
 Container.set(SERVER_HOST, process.env.SERVER_HOST || "localhost");

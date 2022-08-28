@@ -8,7 +8,14 @@ import { setupRouter } from "./route";
 import bodyParser from "koa-bodyparser";
 import Router from "koa-router";
 import { Container } from "typedi";
-import { SERVER_HOST, SERVER_ID, SERVER_PORT } from "./env";
+import {
+  SERVER_HOST,
+  SERVER_ID,
+  SERVER_HTTP_PORT,
+  SERVER_WS_PORT,
+} from "./env";
+import { WebSocketServer } from "ws";
+import { setupWebsocketServer } from "./socket";
 
 async function setupEnvironmentVariables() {
   await import("./env");
@@ -23,8 +30,8 @@ async function setupDatabase() {
   logger("Database setup.");
 }
 
-async function setupHttpServer() {
-  const port = Container.get(SERVER_PORT);
+async function setupRestfulEndpoint() {
+  const port = Container.get(SERVER_HTTP_PORT);
   const host = Container.get(SERVER_HOST);
 
   const httpServer = new koa();
@@ -40,16 +47,37 @@ async function setupHttpServer() {
 
   return new Promise<void>((resolve) => {
     httpServer.listen(port, host, () => {
-      logger(`HTTP server is listening at http://${host}:${port}.`);
       resolve();
+      logger(`RESTful HTTP server is listening at http://${host}:${port}.`);
     });
+  });
+}
+
+async function setupWebsocketEndpoint() {
+  const port = Container.get(SERVER_WS_PORT);
+  const host = Container.get(SERVER_HOST);
+
+  return new Promise<void>((resolve) => {
+    const websocketServer = new WebSocketServer(
+      {
+        host,
+        port,
+        path: "/socket",
+      },
+      () => {
+        resolve();
+        logger(`Websocket server is listening at http://${host}:${port}.`);
+      }
+    );
+    setupWebsocketServer(websocketServer);
   });
 }
 
 async function bootstrap() {
   await setupEnvironmentVariables();
   await setupDatabase();
-  await setupHttpServer();
+  await setupRestfulEndpoint();
+  await setupWebsocketEndpoint();
   console.log(`Server instance ${Container.get(SERVER_ID)} is operating.`);
 }
 

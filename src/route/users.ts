@@ -2,7 +2,7 @@ import Router from "koa-router";
 import {
   authenticationMiddleware as authentication,
   AuthenticationPolicy,
-} from "../middleware/authentication";
+} from "./middleware/authentication";
 import bcrypt, { genSalt } from "bcrypt";
 import {
   AdminTokenAuthenticationError,

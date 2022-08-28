@@ -1,7 +1,7 @@
 import Router, { IMiddleware } from "koa-router";
-import { BaseServerError } from "./error";
-import infoRouter from "./info";
-import userRouter from "./user";
+import { ServerError } from "../error";
+import appInfoRouter from "./app-info";
+import usersRouter from "./users";
 
 export const PAGE_SIZE = 50;
 
@@ -21,7 +21,7 @@ export function setupRouter(router: Router) {
       const ret = await next();
       return ret;
     } catch (err) {
-      if (err instanceof BaseServerError) {
+      if (err instanceof ServerError) {
         if (!ctx.body) {
           ctx.body = {
             errors: [
@@ -62,9 +62,9 @@ export function setupRouter(router: Router) {
   router.use(contentMiddleware);
 
   const routes = [
-    new Route("/", infoRouter),
-    new Route("/server/info", infoRouter),
-    new Route("/users", userRouter),
+    new Route("/", appInfoRouter),
+    new Route("/server/info", appInfoRouter),
+    new Route("/users", usersRouter),
   ];
 
   for (const route of routes) {

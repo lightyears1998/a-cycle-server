@@ -1,9 +1,14 @@
-import Container, { Token } from "typedi";
+import { Container, Token } from "typedi";
 import Randomstring from "randomstring";
 import dotenv from "dotenv";
 import { isTrue } from "./util";
 
 dotenv.config();
+
+/**
+ * UUID to identify the server instance.
+ */
+export const SERVER_ID = new Token<string>("SERVER_ID");
 
 export const SERVER_PORT = new Token<number>("SERVER_PORT");
 Container.set(SERVER_PORT, Number(process.env.SERVER_PORT) || 5280);

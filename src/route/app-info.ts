@@ -20,9 +20,11 @@ let appVersion = "";
 
 router.all("/", (ctx) => {
   ctx.body = {
-    name: appName,
-    description: appDescription,
-    version: appVersion,
+    appInfo: {
+      name: appName,
+      description: appDescription,
+      version: appVersion,
+    },
   };
 });
 

@@ -11,10 +11,10 @@ import {
   UsernameAlreadyRegisteredError,
   UserNotFoundError,
   UserRegistrationProhibitedError,
-} from "./error";
+} from "../error";
 import { getManager } from "../db";
 import { User } from "../entity/user";
-import Container from "typedi";
+import { Container } from "typedi";
 import {
   ADMIN_TOKEN,
   JWT_SECRET_TOKEN,
@@ -234,10 +234,12 @@ protectedRouter.post("/:userId/entries", async (ctx) => {
     Object.assign({}, ctx.request.body, {
       owner: { id: userId } as Partial<User>,
     })
-  );
+  ) as Partial<Entry>;
+  entry.updatedBy;
 
-  Container.get(EntryService).checkEntry(entry);
-  entry = await manager.save(entry);
+  const entryService = Container.get(EntryService);
+  entryService.checkEntry(entry);
+  entry = await entryService.createEntry(entry);
 
   ctx.body = { entry };
 });
@@ -269,7 +271,9 @@ protectedRouter.put("/:userId/entries/:entryId", async (ctx) => {
     owner: { id: userId } as Partial<User>,
   });
 
-  entry = await manager.save(entry);
+  const entryService = Container.get(EntryService);
+  entry = (await entryService.updateEntry(entry)) as Entry;
+
   ctx.body = {
     entry,
   };
@@ -280,34 +284,31 @@ protectedRouter.del("/:userId/entries/:entryId", async (ctx) => {
   const { userId, entryId } = ctx.params;
 
   const manager = getManager();
-  const entry = await manager.findOne(Entry, {
+  let entry = await manager.findOne(Entry, {
     where: { uid: entryId, owner: { id: userId }, isRemoved: false },
-    relations: ["owner"],
   });
 
   if (!entry) {
     ctx.body = {
-      history: null,
+      entry: {},
     };
     return;
   }
 
-  const history = await Container.get(EntryService).removeEntry(entry);
+  const entryService = Container.get(EntryService);
+  entry = (await entryService.removeEntry(entry)) as Entry;
   ctx.body = {
-    history: {
-      id: history.id,
-      date: history.date,
-    },
+    entry,
   };
 });
 
 // Get metadata for syncing entries across clients (sync-recent algorithm)
-protectedRouter.get("/:userId/sync-recent", (ctx) => {
+protectedRouter.get("/:userId/sync-recent", (_ctx) => {
   return;
 });
 
 // Get metadata for syncing entries across clients (sync-full algorithm)
-protectedRouter.get("/:userId/sync-full", (ctx) => {
+protectedRouter.get("/:userId/sync-full", (_ctx) => {
   return;
 });
 

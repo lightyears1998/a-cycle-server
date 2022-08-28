@@ -1,11 +1,10 @@
 import { Column, Entity, ManyToOne, PrimaryGeneratedColumn } from "typeorm";
-import { Entry } from "./entry";
 import { User } from "./user";
 
 export enum EntryOperation {
-  CREATE_ENTRY,
-  UPDATE_ENTRY,
-  REMOVE_ENTRY,
+  CREATE_ENTRY = "CREATE_ENTRY",
+  UPDATE_ENTRY = "UPDATE_ENTRY",
+  REMOVE_ENTRY = "REMOVE_ENTRY",
 }
 
 @Entity()
@@ -19,15 +18,18 @@ export class History {
   @ManyToOne(() => User)
   user!: User;
 
-  @ManyToOne(() => Entry, { nullable: true })
-  entry!: Entry;
-
   @Column({
     type: "enum",
     enum: EntryOperation,
   })
   operation!: EntryOperation;
 
-  @Column()
-  date!: Date;
+  @Column({ type: "uuid" })
+  entryId!: string;
+
+  @Column({ type: "timestamptz" })
+  entryUpdatedAt!: Date;
+
+  @Column({ type: "uuid" })
+  entryUpdatedBy!: string;
 }

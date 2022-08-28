@@ -8,7 +8,7 @@ import { setupRouter } from "./route";
 import bodyParser from "koa-bodyparser";
 import Router from "koa-router";
 import Container from "typedi";
-import { SERVER_HOST, SERVER_PORT } from "./env";
+import { SERVER_HOST, SERVER_ID, SERVER_PORT } from "./env";
 
 async function setupEnvironmentVariables() {
   await import("./env");
@@ -16,28 +16,31 @@ async function setupEnvironmentVariables() {
 }
 
 async function setupDatabase() {
-  await (await import("./db")).dataSource.initialize();
+  const databaseModule = await import("./db");
+  await databaseModule.dataSource.initialize();
+  await databaseModule.setupEntityManager();
+  await databaseModule.setupMetadataFromDatabase();
   logger("Database setup.");
 }
 
-async function setupServer() {
+async function setupHttpServer() {
   const port = Container.get(SERVER_PORT);
   const host = Container.get(SERVER_HOST);
 
-  const server = new koa();
-  server.use(responseTimeMiddleware({ hrtime: true }));
-  server.use(corsMiddleware({ credentials: true }));
-  server.use(bodyParser());
-  server.use(compressMiddleware());
+  const httpServer = new koa();
+  httpServer.use(responseTimeMiddleware({ hrtime: true }));
+  httpServer.use(corsMiddleware({ credentials: true }));
+  httpServer.use(bodyParser());
+  httpServer.use(compressMiddleware());
 
   const router = new Router();
   setupRouter(router);
-  server.use(router.routes());
-  server.use(router.allowedMethods());
+  httpServer.use(router.routes());
+  httpServer.use(router.allowedMethods());
 
   return new Promise<void>((resolve) => {
-    server.listen(port, host, () => {
-      logger(`Server listening at ${host}:${port}`);
+    httpServer.listen(port, host, () => {
+      logger(`HTTP server is listening at http://${host}:${port}.`);
       resolve();
     });
   });
@@ -45,7 +48,9 @@ async function setupServer() {
 
 async function bootstrap() {
   await setupEnvironmentVariables();
-  await Promise.allSettled([setupDatabase(), setupServer()]);
+  await setupDatabase();
+  await setupHttpServer();
+  console.log(`Server instance ${Container.get(SERVER_ID)} is operating.`);
 }
 
 bootstrap();

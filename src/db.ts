@@ -1,8 +1,9 @@
-import { DataSource } from "typeorm";
+import { DataSource, EntityManager } from "typeorm";
 import { isTrue } from "./util";
-import dotenv from "dotenv";
-
-dotenv.config();
+import { SERVER_ID } from "./env";
+import { Container } from "typedi";
+import { Metadata } from "./entity/metadata";
+import { randomUUID } from "crypto";
 
 export const dataSource = new DataSource({
   type: "postgres",
@@ -18,4 +19,25 @@ export const dataSource = new DataSource({
 
 export function getManager() {
   return dataSource.manager;
+}
+
+export async function setupEntityManager() {
+  Container.set(EntityManager, getManager());
+}
+
+export async function setupMetadataFromDatabase() {
+  const manager = getManager();
+
+  let serverIdMetadata = await manager.findOne(Metadata, {
+    where: { key: "SERVER_ID" },
+  });
+  if (!serverIdMetadata) {
+    serverIdMetadata = manager.create(Metadata, {
+      key: "SERVER_ID",
+      value: randomUUID(),
+    });
+    serverIdMetadata = await manager.save(serverIdMetadata);
+  }
+
+  Container.set(SERVER_ID, serverIdMetadata.value);
 }

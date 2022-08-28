@@ -1,7 +1,7 @@
 import { Service } from "typedi";
 import { getManager } from "../db";
 import { User } from "../entity/user";
-import { BadParameterError } from "../route/error";
+import { BadParameterError } from "../error";
 
 @Service()
 export class UserService {

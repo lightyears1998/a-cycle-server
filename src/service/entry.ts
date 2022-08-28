@@ -1,13 +1,17 @@
-import { Service } from "typedi";
-import { DeepPartial } from "typeorm";
-import { getManager } from "../db";
+import { Inject, Service } from "typedi";
+import { DeepPartial, EntityManager } from "typeorm";
 import { Entry } from "../entity/entry";
-import { EntryOperation, History } from "../entity/history";
-import { EntryInvalidError } from "../route/error";
+import { EntryOperation } from "../entity/history";
+import { EntryInvalidError } from "../error";
+import { HistoryService } from "./history";
 
 @Service()
 export class EntryService {
-  private manager = getManager();
+  @Inject()
+  private manager!: EntityManager;
+
+  @Inject()
+  private historyService!: HistoryService;
 
   checkEntry(entry: DeepPartial<Entry>) {
     const props = [
@@ -39,21 +43,22 @@ export class EntryService {
     }
   }
 
-  async removeEntry(entry: Entry) {
+  private async saveEntry(entry: Partial<Entry>, operation: EntryOperation) {
+    entry = await this.manager.save(entry);
+    this.historyService.commitEntryOperation(entry as Entry, operation);
+    return entry;
+  }
+
+  async createEntry(entry: Partial<Entry>) {
+    return this.saveEntry(entry, EntryOperation.CREATE_ENTRY);
+  }
+
+  async updateEntry(entry: Partial<Entry>) {
+    return this.saveEntry(entry, EntryOperation.UPDATE_ENTRY);
+  }
+
+  async removeEntry(entry: Partial<Entry>) {
     entry.isRemoved = true;
-
-    let history = this.manager.create(History, {
-      user: entry.owner,
-      entry: entry,
-      operation: EntryOperation.REMOVE_ENTRY,
-      date: new Date(),
-    } as Partial<History>); // @TODO Use query builder to handle history `lastId` creation.
-
-    await this.manager.transaction(async (manager) => {
-      await manager.save(entry);
-      history = await manager.save(history);
-    });
-
-    return history;
+    return this.saveEntry(entry, EntryOperation.REMOVE_ENTRY);
   }
 }

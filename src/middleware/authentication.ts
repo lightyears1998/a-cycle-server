@@ -1,7 +1,7 @@
 import { Middleware } from "koa";
 import { Container } from "typedi";
 import { JWT_SECRET_TOKEN } from "../env";
-import { UserAuthenticationError } from "../route/error";
+import { UserAuthenticationError } from "../error";
 import jwt, { JsonWebTokenError } from "jsonwebtoken";
 
 export enum AuthenticationPolicy {

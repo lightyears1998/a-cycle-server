@@ -55,9 +55,9 @@ export class Entry {
   @CreateDateColumn()
   createdAt!: Date;
 
-  @Column({ nullable: false })
+  @Column({ type: "timestamptz", nullable: false })
   updatedAt!: Date;
 
-  @Column({ nullable: false })
+  @Column({ type: "uuid", nullable: false })
   updatedBy!: string;
 }

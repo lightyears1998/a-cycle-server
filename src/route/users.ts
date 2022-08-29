@@ -7,7 +7,6 @@ import bcrypt, { genSalt } from "bcrypt";
 import {
   AdminTokenAuthenticationError,
   BadParameterError,
-  HistoryCursorMismatchError,
   UserAuthenticationError,
   UsernameAlreadyRegisteredError,
   UserNotFoundError,
@@ -25,11 +24,8 @@ import { UserService } from "../service/user";
 import jwt from "jsonwebtoken";
 import { EntryService } from "../service/entry";
 import { Entry } from "../entity/entry";
-import { History } from "../entity/history";
-import { In, MoreThan } from "typeorm";
+import { In } from "typeorm";
 import { PAGE_SIZE } from ".";
-import { HistoryService } from "../service/history";
-import { Client } from "../entity/client";
 
 const router = new Router();
 

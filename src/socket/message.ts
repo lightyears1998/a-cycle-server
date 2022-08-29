@@ -1,7 +1,7 @@
 import { randomUUID } from "crypto";
 import type { JsonObject } from "type-fest";
 import { Entry } from "../entity/entry";
-import type { History } from "../entity/history";
+import type { History, HistoryCursor } from "../entity/history";
 import { ServerError } from "../error";
 
 export abstract class Message {
@@ -15,9 +15,9 @@ export abstract class Message {
 export class ControlMessage extends Message {
   type = "ctrl";
 
-  constructor(error: ServerError[], payload: JsonObject = {}) {
+  constructor(error?: ServerError[], payload: JsonObject = {}) {
     super();
-    this.errors = error;
+    this.errors = error || [];
     this.payload = payload;
   }
 }
@@ -45,25 +45,20 @@ export class ClientServerGoodbyeMessage extends Message {
   type = "cs-goodbye";
 }
 
-export type HistoryCursor = Pick<
-  History,
-  "id" | "entryId" | "entryUpdatedAt" | "entryUpdatedBy"
->;
-
-export class SynchronizationRecentModeQueryMessage extends Message {
-  type = "sync-recent-query";
+export class SynchronizationModeRecentRequestMessage extends Message {
+  type = "sync-recent-request";
   payload = {
-    lastestHistory: {} as HistoryCursor,
+    historyCursor: {} as HistoryCursor,
   };
 
   constructor(
     session: string,
-    { id: historyId, entryId, entryUpdatedAt, entryUpdatedBy }: HistoryCursor
+    { id, entryId, entryUpdatedAt, entryUpdatedBy }: HistoryCursor
   ) {
     super();
     this.session = session;
-    this.payload.lastestHistory = {
-      id: historyId,
+    this.payload.historyCursor = {
+      id,
       entryId,
       entryUpdatedAt,
       entryUpdatedBy,
@@ -71,10 +66,10 @@ export class SynchronizationRecentModeQueryMessage extends Message {
   }
 }
 
-export class SynchronizationRecentModeResponseMessage extends Message {
+export class SynchronizationModeRecentResponseMessage extends Message {
   type = "sync-recent-response";
   payload = {
-    lastestHistory: {} as HistoryCursor,
+    historyCursor: {} as HistoryCursor,
     entries: [],
   };
 
@@ -82,4 +77,12 @@ export class SynchronizationRecentModeResponseMessage extends Message {
     super();
     this.session = id;
   }
+}
+
+/**
+ * For debug only
+ */
+export class DebugClientUpdateMessage extends Message {
+  type = "debug-client-update";
+  payload = {};
 }

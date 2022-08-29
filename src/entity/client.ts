@@ -15,6 +15,6 @@ export class Client {
   /**
    * JSON-format history cursor
    */
-  @Column()
+  @Column({ type: "json" })
   historyCursor!: string;
 }

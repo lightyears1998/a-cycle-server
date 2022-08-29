@@ -1,6 +1,11 @@
 import { WebSocketServer } from "ws";
 import jwt from "jsonwebtoken";
-import { getJwtTokenFromHttpAuthenticationHeader, logger } from "../util";
+import {
+  APP_NAME,
+  getJwtTokenFromHttpAuthenticationHeader,
+  isDevelopmentEnvironment,
+  logger,
+} from "../util";
 import {
   ClientServerHandshakeMessage,
   ControlMessage,
@@ -16,6 +21,7 @@ import {
 import { getManager } from "../db";
 import { Client } from "../entity/client";
 import { validate as uuidValidate, version as uuidVersion } from "uuid";
+import debug from "debug";
 
 export function setupWebsocketServer(server: WebSocketServer) {
   server.on("connection", async (socket, request) => {
@@ -33,6 +39,20 @@ export function setupWebsocketServer(server: WebSocketServer) {
       }
 
       socket.send(JSON.stringify(response));
+    };
+
+    const reply = (request: Message, response: Message) => {
+      response.session = request.session;
+      send(response);
+    };
+
+    const replyUnrecognizedMessage = (message: Message) => {
+      reply(
+        message,
+        new ControlMessage([
+          new BadParameterError("Unrecognized message type."),
+        ])
+      );
     };
 
     // Handshaking
@@ -100,14 +120,34 @@ export function setupWebsocketServer(server: WebSocketServer) {
       send(new ClientServerHandshakeMessage([], serverId, userId, clientId));
     }
 
+    const logger = debug(`${APP_NAME}:${userId}:${clientId}`);
+    logger("Finished handshaking, proceed to sync.");
+
+    const syncStatus = {
+      server2client: {
+        goodbye: false,
+      },
+      client2server: {
+        "recent-sync-processing": false,
+        "full-sync-processing": false,
+        goodbye: false,
+      },
+    };
+
     // Request entries synchronization from client to server
     {
       const manager = getManager();
       const client = await manager.find(Client, { where: { uid: clientId } });
       if (client) {
-        // If client record is found, try to perform recent sync
+        logger("Client record found, try to perform a recent-sync.");
+        syncStatus.client2server["recent-sync-processing"] = true;
+        // @TODO
       } else {
-        // If client record is not found, record this client and perform full sync.
+        logger(
+          "Client record not found, record this client and then perform a full-sync."
+        );
+        syncStatus.client2server["full-sync-processing"] = true;
+        // @TODO
       }
     }
 
@@ -138,17 +178,8 @@ export function setupWebsocketServer(server: WebSocketServer) {
         return;
       }
 
+      // Handle message accroding to message type
       switch (message.type) {
-        default: {
-          send(
-            new ControlMessage([
-              new BadParameterError("Unrecognized message type."),
-            ])
-          );
-          socket.close();
-          return;
-        }
-
         case "sync-recent-query": {
           break;
         }
@@ -157,14 +188,30 @@ export function setupWebsocketServer(server: WebSocketServer) {
           break;
         }
 
-        case "bad-apple": {
-          send(
-            new ControlMessage([], {
-              greetings: "Are you a fan of 東方Project?",
-            })
-          );
-          break;
+        default: {
+          if (isDevelopmentEnvironment()) {
+            switch (message.type) {
+              case "debug-client-update": {
+                reply(message, new ControlMessage());
+                break;
+              }
+
+              default: {
+                replyUnrecognizedMessage(message);
+              }
+            }
+          } else {
+            replyUnrecognizedMessage(message);
+          }
         }
+      }
+
+      // If both client and server say goodbye, do cleanup and disconnet
+      if (
+        syncStatus.client2server.goodbye &&
+        syncStatus.server2client.goodbye
+      ) {
+        socket.close();
       }
     });
   });

@@ -7,6 +7,23 @@ export enum EntryOperation {
   REMOVE_ENTRY = "REMOVE_ENTRY",
 }
 
+export class HistoryCursor
+  implements
+    Pick<History, "id" | "entryId" | "entryUpdatedAt" | "entryUpdatedBy">
+{
+  id!: number;
+  entryId!: string;
+  entryUpdatedAt!: Date;
+  entryUpdatedBy!: string;
+
+  constructor(id: number, entryId: string, at: Date, by: string) {
+    this.id = id;
+    this.entryId = entryId;
+    this.entryUpdatedAt = at;
+    this.entryUpdatedBy = by;
+  }
+}
+
 @Entity()
 export class History {
   @PrimaryGeneratedColumn("increment")
@@ -32,4 +49,13 @@ export class History {
 
   @Column({ type: "uuid" })
   entryUpdatedBy!: string;
+
+  toCursor() {
+    return new HistoryCursor(
+      this.id,
+      this.entryId,
+      this.entryUpdatedAt,
+      this.entryUpdatedBy
+    );
+  }
 }

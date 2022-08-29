@@ -4,6 +4,9 @@ export class NotImplementError extends ServerError {}
 
 export class ClockOutOfSyncError extends ServerError {}
 
+export class BadClientIdError extends ServerError {
+  message = "`clientId` must be a valid uuid (v4) string.";
+}
 export class BadParameterError extends ServerError {}
 export class BadPasswordError extends ServerError {}
 

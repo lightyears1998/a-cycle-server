@@ -86,7 +86,9 @@ export function setupRouter(router: Router) {
   const timeSynchronizationMiddleware: IMiddleware = async (ctx, next) => {
     const dateHeader = ctx.header.date;
     if (dateHeader) {
-      if (Math.abs(moment(dateHeader).diff(new Date(), "minutes")) >= 5) {
+      if (
+        Math.abs(moment(new Date(dateHeader)).diff(new Date(), "minutes")) >= 5
+      ) {
         throw new ClockOutOfSyncError();
       }
     }

@@ -1,66 +1,85 @@
 import { randomUUID } from "crypto";
 import type { JsonObject } from "type-fest";
+import { Entry } from "../entity/entry";
+import type { History } from "../entity/history";
+import { ServerError } from "../error";
 
 export abstract class Message {
-  id: string = randomUUID();
+  session: string = randomUUID();
   type!: string;
-  error: Array<string> = [];
-  payload: JsonObject = {};
+  errors: Array<ServerError> = [];
+  payload: Record<string, unknown> = {};
+  timestamp = new Date();
 }
 
 export class ControlMessage extends Message {
   type = "ctrl";
 
-  constructor(error: string[], payload: JsonObject = {}) {
+  constructor(error: ServerError[], payload: JsonObject = {}) {
     super();
-    this.error = error;
+    this.errors = error;
     this.payload = payload;
   }
 }
 
-/**
- * Sent to client for once after the connection is established and user verification is passed.
- */
 export class ClientServerHandshakeMessage extends Message {
-  id = "cs-handshake";
+  session = "client-server-connection";
   type = "cs-handshake";
-  error: Array<string>;
-  payload = {
-    server: {
-      id: "",
-    } as JsonObject,
-    user: {
-      id: "",
-    } as JsonObject,
-  };
-
-  constructor(error: Array<string>, serverId?: string, userId?: string) {
-    super();
-    this.error = error;
-    this.payload.server.id = serverId;
-    this.payload.user.id = userId;
-  }
-}
-
-export class EntriesSynchronizationBeginMessage extends Message {
-  type = "sync-recent-begin";
 
   constructor(
-    id: string,
-    historyId: string,
-    entryId: string,
-    entryUpdatedAt: string
+    error: Array<ServerError>,
+    serverId?: string,
+    userId?: string,
+    clientId?: string
   ) {
     super();
-    this.id = id;
+    this.errors = error;
+    this.payload.serverId = serverId;
+    this.payload.userId = userId;
+    this.payload.clientId = clientId;
   }
 }
 
-export class EntriesSynchronizationCompletedMessage extends Message {
-  type = "sync-recent-complete";
+export class ClientServerGoodbyeMessage extends Message {
+  session = "client-server-connection";
+  type = "cs-goodbye";
+}
+
+export type HistoryCursor = Pick<
+  History,
+  "id" | "entryId" | "entryUpdatedAt" | "entryUpdatedBy"
+>;
+
+export class SynchronizationRecentModeQueryMessage extends Message {
+  type = "sync-recent-query";
+  payload = {
+    lastestHistory: {} as HistoryCursor,
+  };
+
+  constructor(
+    session: string,
+    { id: historyId, entryId, entryUpdatedAt, entryUpdatedBy }: HistoryCursor
+  ) {
+    super();
+    this.session = session;
+    this.payload.lastestHistory = {
+      id: historyId,
+      entryId,
+      entryUpdatedAt,
+      entryUpdatedBy,
+    };
+  }
+}
+
+export class SynchronizationRecentModeResponseMessage extends Message {
+  type = "sync-recent-response";
+  payload = {
+    lastestHistory: {} as HistoryCursor,
+    entries: [],
+  };
 
   constructor(id: string) {
     super();
-    this.id = id;
+    this.session = id;
   }
 }

@@ -1,57 +1,114 @@
 import { WebSocketServer } from "ws";
 import jwt from "jsonwebtoken";
 import { getJwtTokenFromHttpAuthenticationHeader, logger } from "../util";
-import { ClientServerHandshakeMessage, ControlMessage } from "./message";
+import {
+  ClientServerHandshakeMessage,
+  ControlMessage,
+  Message,
+} from "./message";
 import { Container } from "typedi";
 import { SERVER_ID } from "../env";
+import {
+  BadClientIdError,
+  BadParameterError,
+  UserAuthenticationError,
+} from "../error";
+import { getManager } from "../db";
+import { Client } from "../entity/client";
+import { validate as uuidValidate, version as uuidVersion } from "uuid";
 
 export function setupWebsocketServer(server: WebSocketServer) {
   server.on("connection", async (socket, request) => {
-    const send = (message: unknown) => {
-      socket.send(JSON.stringify(message));
-    };
-
     const serverId = Container.get(SERVER_ID);
     let userId: string;
+    let clientId: string;
+
+    const send = (message: Message) => {
+      const response = Object.assign({}, message);
+      for (let i = 0; i < response.errors.length; ++i) {
+        response.errors[i] = {
+          name: response.errors[i].constructor.name,
+          message: response.errors[i].message,
+        };
+      }
+
+      socket.send(JSON.stringify(response));
+    };
+
+    // Handshaking
     {
-      // Authentication phase
-      const authenticationHeader = String(request.headers.authorization);
-      const token =
-        getJwtTokenFromHttpAuthenticationHeader(authenticationHeader);
+      // Authenticate user
+      {
+        const authenticationHeader = String(request.headers.authorization);
+        const token =
+          getJwtTokenFromHttpAuthenticationHeader(authenticationHeader);
 
-      if (!token) {
-        send(new ClientServerHandshakeMessage(["No token"]));
-        socket.close();
-        return;
+        if (!token) {
+          send(
+            new ClientServerHandshakeMessage([
+              new BadParameterError("No token."),
+            ])
+          );
+          socket.close();
+          return;
+        }
+
+        const jwtPayload = jwt.decode(token);
+        if (!jwtPayload) {
+          send(
+            new ClientServerHandshakeMessage([
+              new UserAuthenticationError("Fail to decode JWT."),
+            ])
+          );
+          socket.close();
+          return;
+        }
+
+        if (typeof jwtPayload !== "object") {
+          send(
+            new ClientServerHandshakeMessage([
+              new UserAuthenticationError("JWT payload should be object."),
+            ])
+          );
+          socket.close();
+          return;
+        }
+
+        userId = jwtPayload.userId;
+        if (!userId) {
+          send(
+            new ClientServerHandshakeMessage([
+              new UserAuthenticationError("`userId` not found."),
+            ])
+          );
+          socket.close();
+          return;
+        }
       }
 
-      const jwtPayload = jwt.decode(token);
-      if (!jwtPayload) {
-        send(new ClientServerHandshakeMessage(["Fail to decode JWT"]));
-        socket.close();
-        return;
+      // Get client id
+      {
+        clientId = String(request.headers["a-cycle-client-uid"]);
+        if (!uuidValidate(clientId) || !(uuidVersion(clientId) === 4)) {
+          send(new ClientServerHandshakeMessage([new BadClientIdError()]));
+          socket.close();
+          return;
+        }
       }
 
-      if (typeof jwtPayload !== "object") {
-        send(
-          new ClientServerHandshakeMessage(["JWT payload should be object"])
-        );
-        socket.close();
-        return;
-      }
-
-      userId = jwtPayload.userId;
-      if (!userId) {
-        send(new ClientServerHandshakeMessage(["`userId` not found"]));
-        socket.close();
-        return;
-      }
-
-      send(new ClientServerHandshakeMessage([], serverId, userId));
+      // Finish handshaking
+      send(new ClientServerHandshakeMessage([], serverId, userId, clientId));
     }
 
+    // Request entries synchronization from client to server
     {
-      // Initialize entries synchronization from sever to client
+      const manager = getManager();
+      const client = await manager.find(Client, { where: { uid: clientId } });
+      if (client) {
+        // If client record is found, try to perform recent sync
+      } else {
+        // If client record is not found, record this client and perform full sync.
+      }
     }
 
     socket.on("message", (data) => {
@@ -60,7 +117,7 @@ export function setupWebsocketServer(server: WebSocketServer) {
         message = JSON.parse(data.toString());
       } catch (err) {
         if (err instanceof SyntaxError) {
-          send(new ControlMessage(["Bad JSON syntax"]));
+          send(new ControlMessage([new BadParameterError("Bad JSON syntax.")]));
           socket.close();
           return;
         } else {
@@ -69,10 +126,12 @@ export function setupWebsocketServer(server: WebSocketServer) {
         }
       }
 
-      if (typeof message.id !== "string" || message.id === "") {
+      if (typeof message.session !== "string" || message.session === "") {
         send(
           new ControlMessage([
-            "Messsage should contain an non-empty id of string type",
+            new BadParameterError(
+              "Messsage should contain an non-empty session of string type."
+            ),
           ])
         );
         socket.close();
@@ -81,9 +140,21 @@ export function setupWebsocketServer(server: WebSocketServer) {
 
       switch (message.type) {
         default: {
-          send(new ControlMessage(["Bad message type"]));
+          send(
+            new ControlMessage([
+              new BadParameterError("Unrecognized message type."),
+            ])
+          );
           socket.close();
           return;
+        }
+
+        case "sync-recent-query": {
+          break;
+        }
+
+        case "sync-recent-response": {
+          break;
         }
 
         case "bad-apple": {

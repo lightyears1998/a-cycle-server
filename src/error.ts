@@ -2,6 +2,8 @@ export class ServerError extends Error {}
 
 export class NotImplementError extends ServerError {}
 
+export class ClockOutOfSyncError extends ServerError {}
+
 export class BadParameterError extends ServerError {}
 export class BadPasswordError extends ServerError {}
 

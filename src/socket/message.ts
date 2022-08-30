@@ -91,12 +91,18 @@ export class SynchronizationModeFullMetaQuery extends Message {
 export class SynchronizationModeFullMetaResponse extends Message {
   type = "sync-full-meta-response";
   payload = {
-    currentCursor: {} as HistoryCursor,
+    skip: 0,
+    currentCursor: {} as HistoryCursor | null,
     entryMetadata: [] as EntryMetadata[],
   };
 
-  constructor(cursor: HistoryCursor, metadata: EntryMetadata[]) {
+  constructor(
+    skip: number,
+    cursor: HistoryCursor | null,
+    metadata: EntryMetadata[]
+  ) {
     super();
+    this.payload.skip = skip;
     this.payload.currentCursor = cursor;
     this.payload.entryMetadata = metadata;
   }

@@ -1,6 +1,6 @@
 import { Inject, Service } from "typedi";
-import { DeepPartial, EntityManager } from "typeorm";
-import { Entry, PlainEntry } from "../entity/entry";
+import { DeepPartial, EntityManager, In } from "typeorm";
+import { Entry, EntryMetadata, PlainEntry } from "../entity/entry";
 import { EntryOperation } from "../entity/history";
 import { EntryInvalidError } from "../error";
 import { HistoryService } from "./history";
@@ -49,6 +49,21 @@ export class EntryService {
     return entry;
   }
 
+  isFresher(
+    newEntry: EntryMetadata,
+    oldEntry: EntryMetadata | undefined
+  ): boolean {
+    if (!oldEntry) {
+      return true;
+    }
+
+    return (
+      newEntry.updatedAt > oldEntry.updatedAt ||
+      (newEntry.updatedAt === oldEntry.updatedAt &&
+        newEntry.updatedBy > oldEntry.updatedBy)
+    );
+  }
+
   async createEntry(entry: Partial<Entry>) {
     return this.saveEntry(entry, EntryOperation.CREATE_ENTRY);
   }
@@ -75,14 +90,30 @@ export class EntryService {
       return;
     }
 
-    if (
-      entry.updatedAt > oldEntry.updatedAt ||
-      (entry.updatedAt === oldEntry.updatedAt &&
-        entry.updatedBy > oldEntry.updatedBy)
-    ) {
+    if (this.isFresher(entry, oldEntry)) {
       return this.updateEntry(
         this.manager.create(Entry, Object.assign({}, oldEntry, entry))
       );
     }
+  }
+
+  async filterFresherMetadata(
+    metadata: EntryMetadata[]
+  ): Promise<EntryMetadata[]> {
+    const uids = metadata.map((meta) => meta.uid);
+    const relatedEntries = await this.manager.find(Entry, {
+      where: {
+        uid: In(uids),
+      },
+    });
+
+    const kvArray = relatedEntries.map(
+      (entry) => [entry.uid, entry] as [string, Entry]
+    );
+    const uidMap = new Map(kvArray);
+
+    return metadata.filter((meta) =>
+      this.isFresher(meta, uidMap.get(meta.uid))
+    );
   }
 }

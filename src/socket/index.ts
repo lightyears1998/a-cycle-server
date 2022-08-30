@@ -11,6 +11,10 @@ import {
   ControlMessage,
   DebugClientUpdateMessage,
   Message,
+  SynchronizationModeFullEntriesQuery,
+  SynchronizationModeFullEntriesResponse,
+  SynchronizationModeFullMetaQuery,
+  SynchronizationModeFullMetaResponse,
   SynchronizationModeRecentRequestMessage,
   SynchronizationModeRecentResponseMessage,
 } from "./message";
@@ -24,7 +28,7 @@ import {
 } from "../error";
 import { getManager } from "../db";
 import { Client } from "../entity/client";
-import { History } from "../entity/history";
+import { History, HistoryCursor } from "../entity/history";
 import { validate as uuidValidate, version as uuidVersion } from "uuid";
 import debug from "debug";
 
@@ -143,10 +147,12 @@ export function setupWebsocketServer(server: WebSocketServer) {
     const syncStatus = {
       server2client: {
         goodbye: false,
+        "sync-full-meta-query-count": 0,
       },
       client2server: {
-        "recent-sync-processing": false,
-        "full-sync-processing": false,
+        "sync-recent-processing": false,
+        "sync-full-entries-response-count": 0,
+        "cursor-when-sync-full-started": null as HistoryCursor | null,
         goodbye: false,
       },
     };
@@ -159,14 +165,14 @@ export function setupWebsocketServer(server: WebSocketServer) {
       if (client) {
         logger("Client record found, try to perform a recent-sync.");
 
-        syncStatus.client2server["recent-sync-processing"] = true;
+        syncStatus.client2server["sync-recent-processing"] = true;
 
         send(new SynchronizationModeRecentRequestMessage(client.historyCursor));
       } else {
         logger(
           "Client record not found, record this client and then perform a full-sync."
         );
-        syncStatus.client2server["full-sync-processing"] = true;
+        syncStatus.server2client["sync-full-meta-query-count"]++;
 
         const client = manager.create(Client, {
           uid: clientId,
@@ -176,7 +182,7 @@ export function setupWebsocketServer(server: WebSocketServer) {
         });
         await manager.save(client);
 
-        // todo
+        send(new SynchronizationModeFullMetaQuery(0));
       }
     }
 
@@ -271,9 +277,11 @@ export function setupWebsocketServer(server: WebSocketServer) {
           if (errors.length > 0) {
             // If errors, sync-recent won't work.
             // We have to fallback to sync-full.
-            syncStatus.client2server["recent-sync-processing"] = false;
-            syncStatus.client2server["full-sync-processing"] = true;
-            return;
+            syncStatus.client2server["sync-recent-processing"] = false;
+            syncStatus.server2client["sync-full-meta-query-count"]++;
+            send(new SynchronizationModeFullMetaQuery(0));
+
+            break;
           }
 
           const { historyCursor, entries } =
@@ -292,7 +300,7 @@ export function setupWebsocketServer(server: WebSocketServer) {
 
           if (entries.length === 0) {
             // If `entries` are empty, we must reach the end of history and sync-recent has completed.
-            syncStatus.client2server["recent-sync-processing"] = false;
+            syncStatus.client2server["sync-recent-processing"] = false;
           } else {
             // Continue to request client for sync-recent with lastest histroy cursor
             send(new SynchronizationModeRecentRequestMessage(historyCursor));
@@ -302,18 +310,95 @@ export function setupWebsocketServer(server: WebSocketServer) {
         }
 
         case "sync-full-meta-query": {
+          const { skip } = (message as SynchronizationModeFullMetaQuery)
+            .payload;
+          const cursor = await historyService.getLastestCursor(userId);
+          const entries = await manager.find(Entry, {
+            where: {
+              owner: {
+                id: userId,
+              },
+            },
+            skip: skip,
+            take: PAGE_SIZE,
+          });
+          const meta = entries.map((entry) => entry.toMetadata());
+
+          reply(
+            message,
+            new SynchronizationModeFullMetaResponse(skip, cursor, meta)
+          );
+
           break;
         }
 
         case "sync-full-meta-response": {
+          const { skip, currentCursor, entryMetadata } = (
+            message as SynchronizationModeFullMetaResponse
+          ).payload;
+
+          if (skip === 0 && currentCursor) {
+            syncStatus.client2server["cursor-when-sync-full-started"] =
+              currentCursor;
+          }
+
+          if (
+            !syncStatus.client2server["cursor-when-sync-full-started"] &&
+            currentCursor
+          ) {
+            syncStatus.client2server["cursor-when-sync-full-started"] =
+              currentCursor;
+          }
+
+          if (entryMetadata.length === 0) {
+            break;
+          }
+
+          const fresherEntryMetadata = await entryService.filterFresherMetadata(
+            entryMetadata
+          );
+          send(
+            new SynchronizationModeFullEntriesQuery(
+              fresherEntryMetadata.map((meta) => meta.uid)
+            )
+          );
+
           break;
         }
 
         case "sync-full-entries-query": {
-          break;
+          const { uids } = (message as SynchronizationModeFullEntriesQuery)
+            .payload;
+
+          const entries = await manager.find(Entry, {
+            where: {
+              uid: In(uids),
+              owner: {
+                id: userId,
+              },
+            },
+          });
+
+          const plainEntries = entries.map((entry) => entry.toPlainEntry());
+
+          reply(
+            message,
+            new SynchronizationModeFullEntriesResponse(plainEntries)
+          );
         }
 
         case "sync-full-entries-response": {
+          const { entries } = (
+            message as SynchronizationModeFullEntriesResponse
+          ).payload;
+          syncStatus.client2server["sync-full-entries-response-count"]++;
+
+          await Promise.allSettled(
+            entries.map((entry) =>
+              entryService.updateEntryIfFresher(userId, entry)
+            )
+          );
+
           break;
         }
 
@@ -349,11 +434,26 @@ export function setupWebsocketServer(server: WebSocketServer) {
         }
       }
 
-      // If we are not sync from client, then say goodbye to client
-      if (
-        !syncStatus.client2server["full-sync-processing"] &&
-        !syncStatus.client2server["recent-sync-processing"]
-      ) {
+      const syncRecentOngoing = (): boolean => {
+        return syncStatus.client2server["sync-recent-processing"];
+      };
+
+      const syncFullOngoing = (): boolean => {
+        return (
+          syncStatus.server2client["sync-full-meta-query-count"] >
+          syncStatus.client2server["sync-full-entries-response-count"]
+        );
+      };
+
+      const syncFullSucceed = (): boolean => {
+        return (
+          syncStatus.server2client["sync-full-meta-query-count"] <=
+          syncStatus.client2server["sync-full-entries-response-count"]
+        );
+      };
+
+      // If we are not syncing anything from client, then say goodbye to client
+      if (!syncRecentOngoing() && !syncFullOngoing()) {
         send(new ClientServerGoodbyeMessage());
         syncStatus.server2client.goodbye = true;
       }
@@ -364,6 +464,19 @@ export function setupWebsocketServer(server: WebSocketServer) {
         syncStatus.server2client.goodbye
       ) {
         socket.close();
+
+        // If a sync-full has completed successfully,
+        // update cursor so that next sync could be accelerated.
+        if (
+          syncFullSucceed() &&
+          syncStatus.client2server["cursor-when-sync-full-started"]
+        ) {
+          await clientService.updateClientHistoryCursor(
+            userId,
+            clientId,
+            syncStatus.client2server["cursor-when-sync-full-started"]
+          );
+        }
       }
     });
   });

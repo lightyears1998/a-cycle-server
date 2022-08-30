@@ -1,7 +1,7 @@
 import { Inject, Service } from "typedi";
 import { EntityManager } from "typeorm";
 import { Entry } from "../entity/entry";
-import { History, EntryOperation } from "../entity/history";
+import { History, EntryOperation, HistoryCursor } from "../entity/history";
 
 type UnwrittenHistory = Omit<History, "id" | "lastId">;
 
@@ -88,5 +88,20 @@ export class HistoryService {
       },
     });
     return cursor;
+  }
+
+  async getLastestCursor(userId: string): Promise<HistoryCursor | null> {
+    const history = await this.manager.findOne(History, {
+      where: {
+        user: {
+          id: userId,
+        },
+      },
+      order: {
+        id: "DESC",
+      },
+    });
+
+    return history ? history.toCursor() : null;
   }
 }

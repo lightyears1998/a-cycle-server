@@ -8,6 +8,10 @@ import {
 } from "typeorm";
 import { User } from "./user";
 
+export type PlainEntry = Omit<Entry, "owner" | "timeSpan" | "toPlainEntry">;
+
+export type EntryMetadata = Pick<Entry, "uid" | "updatedAt" | "updatedBy">;
+
 @Entity()
 export class Entry {
   @PrimaryGeneratedColumn("uuid")
@@ -60,4 +64,21 @@ export class Entry {
 
   @Column({ type: "uuid", nullable: false })
   updatedBy!: string;
+
+  toPlainEntry(): PlainEntry {
+    return {
+      uid: this.uid,
+      isRemoved: this.isRemoved,
+      type: this.type,
+      title: this.title,
+      description: this.description,
+      isTransient: this.isTransient,
+      startDate: this.startDate,
+      endDate: this.endDate,
+      metadata: this.metadata,
+      createdAt: this.createdAt,
+      updatedAt: this.updatedAt,
+      updatedBy: this.updatedBy,
+    };
+  }
 }

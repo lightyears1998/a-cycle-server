@@ -1,4 +1,5 @@
 import { Column, Entity, ManyToOne, PrimaryGeneratedColumn } from "typeorm";
+import { HistoryCursor } from "./history";
 import { User } from "./user";
 
 @Entity()
@@ -15,6 +16,6 @@ export class Client {
   /**
    * JSON-format history cursor
    */
-  @Column({ type: "json" })
-  historyCursor!: string;
+  @Column({ type: "json", default: "{}" })
+  historyCursor!: HistoryCursor;
 }

@@ -1,3 +1,4 @@
+import { IsDate, IsNumber, IsString, IsUUID } from "class-validator";
 import { Column, Entity, ManyToOne, PrimaryGeneratedColumn } from "typeorm";
 import { User } from "./user";
 
@@ -11,9 +12,16 @@ export class HistoryCursor
   implements
     Pick<History, "id" | "entryId" | "entryUpdatedAt" | "entryUpdatedBy">
 {
+  @IsNumber()
   id!: number;
+
+  @IsString()
   entryId!: string;
+
+  @IsDate()
   entryUpdatedAt!: Date;
+
+  @IsUUID(4)
   entryUpdatedBy!: string;
 
   constructor(id: number, entryId: string, at: Date, by: string) {
@@ -21,6 +29,16 @@ export class HistoryCursor
     this.entryId = entryId;
     this.entryUpdatedAt = at;
     this.entryUpdatedBy = by;
+  }
+
+  static fromJSON(json: string | object) {
+    const obj = JSON.parse(String(json));
+    return new HistoryCursor(
+      obj.id,
+      obj.entryId,
+      obj.entryUpdatedAt,
+      obj.entryUpdatedBy
+    );
   }
 }
 

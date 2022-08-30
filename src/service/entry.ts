@@ -1,6 +1,6 @@
 import { Inject, Service } from "typedi";
 import { DeepPartial, EntityManager } from "typeorm";
-import { Entry } from "../entity/entry";
+import { Entry, PlainEntry } from "../entity/entry";
 import { EntryOperation } from "../entity/history";
 import { EntryInvalidError } from "../error";
 import { HistoryService } from "./history";
@@ -60,5 +60,29 @@ export class EntryService {
   async removeEntry(entry: Partial<Entry>) {
     entry.isRemoved = true;
     return this.saveEntry(entry, EntryOperation.REMOVE_ENTRY);
+  }
+
+  async updateEntryIfFresher(userId: string, entry: PlainEntry) {
+    const oldEntry = await this.manager.findOne(Entry, {
+      where: {
+        owner: {
+          id: userId,
+        },
+        uid: entry.uid,
+      },
+    });
+    if (!oldEntry) {
+      return;
+    }
+
+    if (
+      entry.updatedAt > oldEntry.updatedAt ||
+      (entry.updatedAt === oldEntry.updatedAt &&
+        entry.updatedBy > oldEntry.updatedBy)
+    ) {
+      return this.updateEntry(
+        this.manager.create(Entry, Object.assign({}, oldEntry, entry))
+      );
+    }
   }
 }

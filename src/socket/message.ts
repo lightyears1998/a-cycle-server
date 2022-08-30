@@ -1,7 +1,7 @@
 import { randomUUID } from "crypto";
 import type { JsonObject } from "type-fest";
-import { Entry } from "../entity/entry";
-import type { History, HistoryCursor } from "../entity/history";
+import { EntryMetadata, PlainEntry } from "../entity/entry";
+import { HistoryCursor } from "../entity/history";
 import { ServerError } from "../error";
 
 export abstract class Message {
@@ -51,12 +51,8 @@ export class SynchronizationModeRecentRequestMessage extends Message {
     historyCursor: {} as HistoryCursor,
   };
 
-  constructor(
-    session: string,
-    { id, entryId, entryUpdatedAt, entryUpdatedBy }: HistoryCursor
-  ) {
+  constructor({ id, entryId, entryUpdatedAt, entryUpdatedBy }: HistoryCursor) {
     super();
-    this.session = session;
     this.payload.historyCursor = {
       id,
       entryId,
@@ -70,12 +66,63 @@ export class SynchronizationModeRecentResponseMessage extends Message {
   type = "sync-recent-response";
   payload = {
     historyCursor: {} as HistoryCursor,
-    entries: [],
+    entries: [] as PlainEntry[],
   };
 
-  constructor(id: string) {
+  constructor(historyCursor: HistoryCursor, entries: PlainEntry[]) {
     super();
-    this.session = id;
+    this.payload.historyCursor = historyCursor;
+    this.payload.entries = entries;
+  }
+}
+
+export class SynchronizationModeFullMetaQuery extends Message {
+  type = "sync-full-meta-query";
+  payload = {
+    skip: 0,
+  };
+
+  constructor(skip: number) {
+    super();
+    this.payload.skip = skip;
+  }
+}
+
+export class SynchronizationModeFullMetaResponse extends Message {
+  type = "sync-full-meta-response";
+  payload = {
+    currentCursor: {} as HistoryCursor,
+    entryMetadata: [] as EntryMetadata[],
+  };
+
+  constructor(cursor: HistoryCursor, metadata: EntryMetadata[]) {
+    super();
+    this.payload.currentCursor = cursor;
+    this.payload.entryMetadata = metadata;
+  }
+}
+
+export class SynchronizationModeFullEntriesQuery extends Message {
+  type = "sync-full-entries-query";
+  payload = {
+    uids: [] as Array<string>,
+  };
+
+  constructor(uids: string[]) {
+    super();
+    this.payload.uids = uids;
+  }
+}
+
+export class SynchronizationModeFullEntriesResponse extends Message {
+  type = "sync-full-entries-response";
+  payload = {
+    entries: [] as PlainEntry[],
+  };
+
+  constructor(entries: PlainEntry[]) {
+    super();
+    this.payload.entries = entries;
   }
 }
 
@@ -84,5 +131,7 @@ export class SynchronizationModeRecentResponseMessage extends Message {
  */
 export class DebugClientUpdateMessage extends Message {
   type = "debug-client-update";
-  payload = {};
+  payload = {
+    historyCursor: {} as HistoryCursor,
+  };
 }

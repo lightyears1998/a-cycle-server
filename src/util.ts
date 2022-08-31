@@ -1,6 +1,7 @@
 import debug from "debug";
 
 export const APP_NAME = "a-cycle-server";
+export const APP_ROOT = __dirname;
 
 export const logger = debug(APP_NAME);
 

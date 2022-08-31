@@ -1,9 +1,9 @@
-import type { JsonObject } from "type-fest";
+import type { JsonValue } from "type-fest";
 import { Column, Entity, ManyToOne, PrimaryGeneratedColumn } from "typeorm";
 import { SoftDeletableObject } from "./interface/soft-deletable-object";
 import { User } from "./user";
 
-export type PlainEntry = Omit<Entry, "user" | "toPlainEntry" | "getMetadata">;
+export type PlainEntry = Omit<Entry, "user" | "toPlain" | "getMetadata">;
 
 export type EntryMetadata = Pick<
   PlainEntry,
@@ -21,13 +21,17 @@ export class Entry implements SoftDeletableObject {
   @Column({ nullable: false })
   contentType!: string;
 
-  @Column({ type: "json", default: "{}" })
-  content!: JsonObject;
+  @Column({ type: "json", default: "null" })
+  content!: JsonValue;
 
   @Column({ type: "timestamptz", nullable: true })
   removedAt!: Date | null;
 
-  @Column({ type: "timestamptz", nullable: false, default: "NOW()" })
+  @Column({
+    type: "timestamptz",
+    nullable: false,
+    default: () => "NOW()",
+  })
   createdAt!: Date;
 
   @Column({ type: "timestamptz", nullable: false })
@@ -36,7 +40,7 @@ export class Entry implements SoftDeletableObject {
   @Column({ type: "uuid", nullable: false })
   updatedBy!: string;
 
-  toPlainEntry(): PlainEntry {
+  toPlain(): PlainEntry {
     return {
       uuid: this.uuid,
       contentType: this.contentType,

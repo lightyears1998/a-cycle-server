@@ -41,3 +41,5 @@ Container.set(
   process.env.SERVER_JWT_SECRET ||
     Randomstring.generate({ length: 32, charset: "hex" })
 );
+
+export const TRANSMISSION_PAGING_SIZE = 50;

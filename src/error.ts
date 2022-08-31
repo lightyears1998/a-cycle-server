@@ -1,5 +1,7 @@
 export class ServerError extends Error {}
 
+export class InternalServerError extends ServerError {}
+
 export class NotImplementError extends ServerError {}
 
 export class ClockOutOfSyncError extends ServerError {}

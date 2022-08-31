@@ -1,8 +1,7 @@
 import { Inject, Service } from "typedi";
-import { DeepPartial, EntityManager, In } from "typeorm";
+import { EntityManager, In } from "typeorm";
 import { Entry, EntryMetadata, PlainEntry } from "../entity/entry";
 import { EntryOperation } from "../entity/entry-history";
-import { EntryInvalidError } from "../error";
 import { HistoryService } from "./history";
 
 @Service()
@@ -13,40 +12,13 @@ export class EntryService {
   @Inject()
   private historyService!: HistoryService;
 
-  checkEntry(entry: DeepPartial<Entry>) {
-    const props = [
-      "uid",
-      "owner",
-      "type",
-      "title",
-      "description",
-      "isTransient",
-      "updatedAt",
-      "updatedBy",
-    ] as Array<keyof Entry>;
-
-    if (typeof entry !== "object") {
-      throw new EntryInvalidError();
-    }
-
-    for (const prop of props) {
-      if (!(prop in entry) || typeof entry[prop] === "undefined") {
-        throw new EntryInvalidError(`\`${prop}\` field is required.`);
-      }
-    }
-
-    if (
-      typeof entry.user !== "object" ||
-      typeof entry.user.id === "undefined"
-    ) {
-      throw new EntryInvalidError();
-    }
-  }
-
-  private async saveEntry(entry: Partial<Entry>, operation: EntryOperation) {
-    entry = await this.manager.save(entry);
+  private async saveEntry(
+    entry: Partial<Entry>,
+    operation: EntryOperation
+  ): Promise<Entry> {
+    const savedEntry = await this.manager.save(Entry, entry);
     this.historyService.commitEntryOperation(entry as Entry, operation);
-    return entry;
+    return savedEntry;
   }
 
   isFresher(
@@ -64,17 +36,17 @@ export class EntryService {
     );
   }
 
-  async createEntry(entry: Partial<Entry>) {
-    return this.saveEntry(entry, EntryOperation.CREATE_ENTRY);
+  async createEntry(entry: Partial<Entry>): Promise<Entry> {
+    return this.saveEntry(entry, EntryOperation.CREATE);
   }
 
-  async updateEntry(entry: Partial<Entry>) {
-    return this.saveEntry(entry, EntryOperation.UPDATE_ENTRY);
+  async updateEntry(entry: Partial<Entry>): Promise<Entry> {
+    return this.saveEntry(entry, EntryOperation.UPDATE);
   }
 
-  async removeEntry(entry: Partial<Entry>) {
-    entry.isRemoved = true;
-    return this.saveEntry(entry, EntryOperation.REMOVE_ENTRY);
+  async removeEntry(entry: Partial<Entry>): Promise<Entry> {
+    entry.removedAt = new Date();
+    return this.saveEntry(entry, EntryOperation.UPDATE);
   }
 
   async updateEntryIfFresher(userId: string, entry: PlainEntry) {
@@ -97,7 +69,7 @@ export class EntryService {
     }
   }
 
-  async filterFresherMetadata(
+  async filterFresherEntryMetadata(
     metadata: EntryMetadata[]
   ): Promise<EntryMetadata[]> {
     const uids = metadata.map((meta) => meta.uuid);

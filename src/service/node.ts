@@ -1,10 +1,10 @@
 import { Inject, Service } from "typedi";
 import { EntityManager } from "typeorm";
-import { Node } from "../entity/user-agent";
+import { Node } from "../entity/node";
 import { HistoryCursor } from "../entity/entry-history";
 
 @Service()
-export class ClientService {
+export class NodeService {
   @Inject()
   private manager!: EntityManager;
 

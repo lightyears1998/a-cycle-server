@@ -18,27 +18,31 @@ import { Container } from "typedi";
 import {
   ADMIN_TOKEN,
   JWT_SECRET_TOKEN,
+  SERVER_UUID,
+  TRANSMISSION_PAGING_SIZE,
   USER_REGISTRATION_ENABLED,
 } from "../env";
 import { UserService } from "../service/user";
 import jwt from "jsonwebtoken";
 import { EntryService } from "../service/entry";
 import { Entry } from "../entity/entry";
-import { In } from "typeorm";
-import { PAGE_SIZE } from ".";
+import { In, IsNull } from "typeorm";
 
 const router = new Router();
+
+const serverUuid = Container.get(SERVER_UUID);
+const manager = getManager();
+const userService = Container.get(UserService);
+const entryService = Container.get(EntryService);
 
 // Check if a username exists
 router.get("/", async (ctx) => {
   const username = String(ctx.query.username);
 
   if (username) {
-    const user = await Container.get(UserService).getUserByUsername(username);
+    const user = await userService.getUserByUsername(username);
     if (user) {
-      const maskedUser: Partial<User> = {};
-      maskedUser.id = user.id;
-      ctx.body = { user: maskedUser };
+      ctx.body = { user: user.toPlain() };
     } else {
       ctx.body = { user: {} };
     }
@@ -61,24 +65,20 @@ router.post("/", async (ctx) => {
     throw new BadParameterError("`username` is required.");
   }
 
-  Container.get(UserService).checkPassword(password);
+  userService.checkPasswordStrength(password);
 
-  const manager = getManager();
-
-  let user = await Container.get(UserService).getUserByUsername(username);
+  let user = await userService.getUserByUsername(username);
   if (user) {
     throw new UsernameAlreadyRegisteredError();
   }
 
-  user = manager.create(User);
-  user.username = username;
-  user.passwordHash = await bcrypt.hash(password, await bcrypt.genSalt());
-
+  user = manager.create(User, {
+    username,
+    passwordHash: await bcrypt.hash(password, await bcrypt.genSalt()),
+  });
   user = await manager.save(user);
 
-  const maskedUser: Partial<User> = user;
-  maskedUser.passwordHash = undefined;
-  ctx.body = { user: maskedUser };
+  ctx.body = { user: user.toPlain() };
 });
 
 // Request JWT Token (aka. User login)
@@ -90,17 +90,16 @@ router.post("/:userId/jwt-tokens", async (ctx) => {
     throw new BadParameterError("`password` is required.");
   }
 
-  const manager = getManager();
   const user = await manager.findOne(User, {
-    where: { id: userId, isRemoved: false },
+    where: { id: userId, removedAt: IsNull() },
   });
 
   if (!user) {
     throw new UserNotFoundError();
   }
 
-  const passwordsMatch = await bcrypt.compare(password, user.passwordHash);
-  if (!passwordsMatch) {
+  const passwordsMatched = await bcrypt.compare(password, user.passwordHash);
+  if (!passwordsMatched) {
     throw new UserAuthenticationError();
   }
 
@@ -114,7 +113,7 @@ router.get("/:userId/password/reset", async (ctx) => {
   const { adminToken, password } = ctx.request.body;
 
   if (!adminToken) {
-    throw new BadParameterError("`adminToken` must be provided.");
+    throw new BadParameterError("`adminToken` is required.");
   }
 
   if (adminToken !== Container.get(ADMIN_TOKEN)) {
@@ -125,9 +124,8 @@ router.get("/:userId/password/reset", async (ctx) => {
     throw new BadParameterError("`password` is required.");
   }
 
-  const manager = getManager();
   let user = await manager.findOne(User, {
-    where: { id: userId, isRemoved: false },
+    where: { id: userId, removedAt: IsNull() },
   });
   if (!user) {
     throw new UserNotFoundError();
@@ -136,12 +134,8 @@ router.get("/:userId/password/reset", async (ctx) => {
   user.passwordHash = await bcrypt.hash(password, await genSalt());
   user = await manager.save(user);
 
-  const maskedUser: Partial<User> = {
-    id: user.id,
-    username: user.username,
-  };
   ctx.body = {
-    user: maskedUser,
+    user: user.toPlain(),
   };
 });
 
@@ -161,11 +155,10 @@ protectedRouter.put("/:userId/password", async (ctx) => {
     throw new BadParameterError("`password` is required.");
   }
 
-  Container.get(UserService).checkPassword(password);
+  userService.checkPasswordStrength(password);
 
-  const manager = getManager();
   let user = await manager.findOne(User, {
-    where: { id: userId, isRemoved: false },
+    where: { id: userId, removedAt: IsNull() },
   });
   if (!user) {
     throw new UserNotFoundError();
@@ -174,10 +167,7 @@ protectedRouter.put("/:userId/password", async (ctx) => {
   user.passwordHash = await bcrypt.hash(password, await bcrypt.genSalt());
   user = await manager.save(user);
 
-  const maskedUser: Partial<User> = {
-    id: user.id,
-  };
-  ctx.body = { user: maskedUser };
+  ctx.body = { user: user.toPlain() };
 });
 
 // Get entries
@@ -192,98 +182,97 @@ protectedRouter.get("/:userId/entries", async (ctx) => {
         id: userId,
       },
       uuid: uid ? In(Array(uid).flat()) : undefined,
-      isRemoved: false,
+      removedAt: IsNull(),
     },
-    skip: (Number(page) - 1) * PAGE_SIZE,
-    take: PAGE_SIZE,
+    skip: (Number(page) - 1) * TRANSMISSION_PAGING_SIZE,
+    take: TRANSMISSION_PAGING_SIZE,
   });
 
-  ctx.body = { entries };
+  ctx.body = { entries: entries.map((entry) => entry.toPlain()) };
 });
 
 // Get an entry
-protectedRouter.get("/:userId/entries/:entryId", async (ctx) => {
-  const { userId, entryId } = ctx.params;
+protectedRouter.get("/:userId/entries/:entryUuid", async (ctx) => {
+  const { userId, entryUuid } = ctx.params;
 
   const manager = getManager();
   const entry = await manager.findOne(Entry, {
     where: {
-      uuid: entryId,
+      uuid: entryUuid,
       user: {
         id: userId,
       },
-      isRemoved: false,
+      removedAt: IsNull(),
     },
   });
 
   ctx.body = {
-    entry,
+    entry: entry ? entry.toPlain() : entry,
   };
 });
 
 // Create an entry
 protectedRouter.post("/:userId/entries", async (ctx) => {
   const { userId } = ctx.params;
+  const createdAt = new Date();
 
-  const manager = getManager();
-
-  let entry = manager.create(
+  const entry = manager.create(
     Entry,
     Object.assign({}, ctx.request.body, {
-      owner: { id: userId } as Partial<User>,
+      user: { id: userId },
+      createdAt: createdAt,
+      updatedAt: createdAt,
+      updatedBy: serverUuid,
     })
   ) as Partial<Entry>;
-  entry.updatedBy;
 
-  const entryService = Container.get(EntryService);
-  entryService.checkEntry(entry);
-  entry = await entryService.createEntry(entry);
+  const savedEntry = await entryService.createEntry(entry);
 
-  ctx.body = { entry };
+  ctx.body = { entry: savedEntry.toPlain() };
 });
 
 // Update an entry
-protectedRouter.put("/:userId/entries/:entryId", async (ctx) => {
-  const { userId, entryId } = ctx.params;
+protectedRouter.put("/:userId/entries/:entryUuid", async (ctx) => {
+  const { userId, entryUuid } = ctx.params;
+  const updatedAt = new Date();
 
-  const manager = getManager();
-
-  let entry = await manager.findOne(Entry, {
+  const entry = await manager.findOne(Entry, {
     where: {
-      uuid: entryId,
+      uuid: entryUuid,
       user: {
         id: userId,
       },
-      isRemoved: false,
+      removedAt: IsNull(),
     },
   });
   if (!entry) {
     ctx.body = {
-      entry: {},
+      entry: null,
     };
     return;
   }
 
   Object.assign(entry, ctx.request.body, {
-    uid: entryId,
-    owner: { id: userId } as Partial<User>,
+    uuid: entryUuid,
+    user: { id: userId },
+    updatedAt: updatedAt,
+    updatedBy: serverUuid,
   });
 
-  const entryService = Container.get(EntryService);
-  entry = (await entryService.updateEntry(entry)) as Entry;
+  const savedEntry = await entryService.updateEntry(entry);
 
   ctx.body = {
-    entry,
+    entry: savedEntry.toPlain(),
   };
 });
 
 // Remove an entry
-protectedRouter.del("/:userId/entries/:entryId", async (ctx) => {
-  const { userId, entryId } = ctx.params;
+protectedRouter.del("/:userId/entries/:entryUuid", async (ctx) => {
+  const { userId, entryUuid } = ctx.params;
 
   const manager = getManager();
   let entry = await manager.findOne(Entry, {
-    where: { uuid: entryId, user: { id: userId }, isRemoved: false },
+    where: { uuid: entryUuid, user: { id: userId }, removedAt: IsNull() },
   });
 
   if (!entry) {
@@ -293,10 +282,9 @@ protectedRouter.del("/:userId/entries/:entryId", async (ctx) => {
     return;
   }
 
-  const entryService = Container.get(EntryService);
-  entry = (await entryService.removeEntry(entry)) as Entry;
+  entry = await entryService.removeEntry(entry);
   ctx.body = {
-    entry,
+    entry: entry.toPlain(),
   };
 });
 

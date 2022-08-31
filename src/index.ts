@@ -4,7 +4,6 @@ import { checkGcInDevelopment, logger } from "./util";
 import responseTimeMiddleware from "koa-response-time";
 import compressMiddleware from "koa-compress";
 import corsMiddleware from "@koa/cors";
-import { setupRouter } from "./route";
 import bodyParser from "koa-bodyparser";
 import Router from "koa-router";
 import { Container } from "typedi";
@@ -15,7 +14,6 @@ import {
   SERVER_WS_PORT,
 } from "./env";
 import { WebSocketServer } from "ws";
-import { setupWebsocketServer } from "./socket";
 
 async function setupEnvironmentVariables() {
   await import("./env");
@@ -41,7 +39,7 @@ async function setupRestfulEndpoint() {
   httpServer.use(compressMiddleware());
 
   const router = new Router();
-  setupRouter(router);
+  (await import("./route")).setupRouter(router);
   httpServer.use(router.routes());
   httpServer.use(router.allowedMethods());
 
@@ -57,19 +55,19 @@ async function setupWebsocketEndpoint() {
   const port = Container.get(SERVER_WS_PORT);
   const host = Container.get(SERVER_HOST);
 
-  return new Promise<void>((resolve) => {
+  return new Promise<void>(async (resolve) => {
     const websocketServer = new WebSocketServer(
       {
         host,
         port,
         path: "/socket",
       },
-      () => {
+      async () => {
+        (await import("./socket")).setupWebsocketServer(websocketServer);
         resolve();
         logger(`Websocket server is listening at http://${host}:${port}.`);
       }
     );
-    setupWebsocketServer(websocketServer);
   });
 }
 

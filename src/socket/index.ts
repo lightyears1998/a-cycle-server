@@ -19,7 +19,7 @@ import {
   SynchronizationModeRecentResponseMessage,
 } from "./message";
 import { Container } from "typedi";
-import { SERVER_UUID } from "../env";
+import { SERVER_UUID, TRANSMISSION_PAGING_SIZE } from "../env";
 import {
   BadClientIdError,
   BadParameterError,
@@ -27,16 +27,16 @@ import {
   UserAuthenticationError,
 } from "../error";
 import { getManager } from "../db";
-import { Node } from "../entity/user-agent";
+import { Node } from "../entity/node";
 import { EntryHistory, HistoryCursor } from "../entity/entry-history";
 import { validate as uuidValidate, version as uuidVersion } from "uuid";
 import debug from "debug";
 
 import { HistoryService } from "../service/history";
-import { PAGE_SIZE } from "../route";
+
 import { In, MoreThan } from "typeorm";
 import { Entry } from "../entity/entry";
-import { ClientService } from "../service/client";
+import { NodeService } from "../service/node";
 import { EntryService } from "../service/entry";
 
 export function setupWebsocketServer(server: WebSocketServer) {
@@ -141,7 +141,7 @@ export function setupWebsocketServer(server: WebSocketServer) {
 
     const manager = getManager();
     const historyService = Container.get(HistoryService);
-    const clientService = Container.get(ClientService);
+    const clientService = Container.get(NodeService);
     const entryService = Container.get(EntryService);
 
     const syncStatus = {
@@ -251,7 +251,7 @@ export function setupWebsocketServer(server: WebSocketServer) {
             order: {
               id: "ASC",
             },
-            take: PAGE_SIZE,
+            take: TRANSMISSION_PAGING_SIZE,
           });
           const nextHistroyCursor = histories[histories.length - 1];
 
@@ -260,7 +260,7 @@ export function setupWebsocketServer(server: WebSocketServer) {
               uuid: In(histories.map((history) => history.entryId)),
             },
           });
-          const plainEntries = entries.map((entry) => entry.toPlainEntry());
+          const plainEntries = entries.map((entry) => entry.toPlain());
 
           reply(
             message,
@@ -320,7 +320,7 @@ export function setupWebsocketServer(server: WebSocketServer) {
               },
             },
             skip: skip,
-            take: PAGE_SIZE,
+            take: TRANSMISSION_PAGING_SIZE,
           });
           const meta = entries.map((entry) => entry.getMetadata());
 
@@ -354,9 +354,8 @@ export function setupWebsocketServer(server: WebSocketServer) {
             break;
           }
 
-          const fresherEntryMetadata = await entryService.filterFresherMetadata(
-            entryMetadata
-          );
+          const fresherEntryMetadata =
+            await entryService.filterFresherEntryMetadata(entryMetadata);
           send(
             new SynchronizationModeFullEntriesQuery(
               fresherEntryMetadata.map((meta) => meta.uuid)
@@ -379,7 +378,7 @@ export function setupWebsocketServer(server: WebSocketServer) {
             },
           });
 
-          const plainEntries = entries.map((entry) => entry.toPlainEntry());
+          const plainEntries = entries.map((entry) => entry.toPlain());
 
           reply(
             message,

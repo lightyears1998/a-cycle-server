@@ -1,9 +1,13 @@
 import { Inject, Service } from "typedi";
 import { EntityManager } from "typeorm";
 import { Entry } from "../entity/entry";
-import { History, EntryOperation, HistoryCursor } from "../entity/history";
+import {
+  EntryHistory,
+  EntryOperation,
+  HistoryCursor,
+} from "../entity/entry-history";
 
-type UnwrittenHistory = Omit<History, "id" | "lastId">;
+type UnwrittenHistory = Omit<EntryHistory, "id" | "lastId">;
 
 @Service()
 export class HistoryService {
@@ -30,7 +34,7 @@ export class HistoryService {
         try {
           await this.manager.transaction("SERIALIZABLE", async (manager) => {
             const { lastHistoryId } = await manager
-              .createQueryBuilder(History, "history")
+              .createQueryBuilder(EntryHistory, "history")
               .select([])
               .addSelect("COALESCE(MAX(history.id), 0)", "lastHistoryId")
               .where({
@@ -39,7 +43,7 @@ export class HistoryService {
               .getRawOne();
 
             const history = manager.create(
-              History,
+              EntryHistory,
               Object.assign({}, unwrittenHistory, {
                 lastId: Number(lastHistoryId),
               })
@@ -61,10 +65,10 @@ export class HistoryService {
   }
 
   commitEntryOperation(entry: Entry, operation: EntryOperation) {
-    const unwrittenHistory = this.manager.create(History, {
-      user: entry.owner,
-      operation,
-      entryId: entry.uid,
+    const unwrittenHistory = this.manager.create(EntryHistory, {
+      user: entry.user,
+      entryOperation: operation,
+      entryId: entry.uuid,
       entryUpdatedAt: entry.updatedAt,
       entryUpdatedBy: entry.updatedBy,
     }) as UnwrittenHistory;
@@ -74,9 +78,9 @@ export class HistoryService {
   }
 
   async locateHistoryCursor(
-    unverifiedHistoryCursor: Partial<History>
-  ): Promise<History | null> {
-    const cursor = await this.manager.findOne(History, {
+    unverifiedHistoryCursor: Partial<EntryHistory>
+  ): Promise<EntryHistory | null> {
+    const cursor = await this.manager.findOne(EntryHistory, {
       where: {
         user: Object(unverifiedHistoryCursor.user),
         id: Number(unverifiedHistoryCursor.id),
@@ -91,7 +95,7 @@ export class HistoryService {
   }
 
   async getLastestCursor(userId: string): Promise<HistoryCursor | null> {
-    const history = await this.manager.findOne(History, {
+    const history = await this.manager.findOne(EntryHistory, {
       where: {
         user: {
           id: userId,

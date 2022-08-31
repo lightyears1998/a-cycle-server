@@ -1,7 +1,7 @@
 import { Inject, Service } from "typedi";
 import { EntityManager } from "typeorm";
-import { Client } from "../entity/client";
-import { HistoryCursor } from "../entity/history";
+import { Node } from "../entity/user-agent";
+import { HistoryCursor } from "../entity/entry-history";
 
 @Service()
 export class ClientService {
@@ -14,7 +14,7 @@ export class ClientService {
     historyCursor: HistoryCursor
   ) {
     await this.manager.update(
-      Client,
+      Node,
       {
         uid: clientId,
         user: {

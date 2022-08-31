@@ -1,60 +1,31 @@
-import moment from "moment";
+import type { JsonObject } from "type-fest";
 import { Column, Entity, ManyToOne, PrimaryGeneratedColumn } from "typeorm";
+import { SoftDeletableObject } from "./interface/soft-deletable-object";
 import { User } from "./user";
 
-export type PlainEntry = Omit<
-  Entry,
-  "owner" | "timeSpan" | "toPlainEntry" | "toMetadata"
->;
+export type PlainEntry = Omit<Entry, "user" | "toPlainEntry" | "getMetadata">;
 
 export type EntryMetadata = Pick<
-  Entry,
-  "uid" | "createdAt" | "updatedAt" | "updatedBy"
+  PlainEntry,
+  "uuid" | "createdAt" | "updatedAt" | "updatedBy"
 >;
 
 @Entity()
-export class Entry {
+export class Entry implements SoftDeletableObject {
   @PrimaryGeneratedColumn("uuid")
-  uid!: string;
+  uuid!: string;
 
   @ManyToOne(() => User, { nullable: false })
-  owner?: User;
-
-  @Column({ default: false })
-  isRemoved!: boolean;
+  user?: User;
 
   @Column({ nullable: false })
-  type!: string;
+  contentType!: string;
 
-  @Column()
-  title!: string;
-
-  @Column()
-  description!: string;
-
-  @Column({ nullable: false })
-  isTransient!: boolean;
+  @Column({ type: "json", default: "{}" })
+  content!: JsonObject;
 
   @Column({ type: "timestamptz", nullable: true })
-  startDate!: Date | null;
-
-  @Column({ type: "timestamptz", nullable: true })
-  endDate!: Date | null;
-
-  @Column({ default: "{}" })
-  metadata!: string;
-
-  get timeSpan() {
-    if (this.isTransient) {
-      return 0;
-    }
-
-    if (this.endDate && this.startDate) {
-      return moment(this.endDate).diff(this.startDate);
-    }
-
-    throw new Error("Can't calculate entry time span.");
-  }
+  removedAt!: Date | null;
 
   @Column({ type: "timestamptz", nullable: false, default: "NOW()" })
   createdAt!: Date;
@@ -67,24 +38,19 @@ export class Entry {
 
   toPlainEntry(): PlainEntry {
     return {
-      uid: this.uid,
-      isRemoved: this.isRemoved,
-      type: this.type,
-      title: this.title,
-      description: this.description,
-      isTransient: this.isTransient,
-      startDate: this.startDate,
-      endDate: this.endDate,
-      metadata: this.metadata,
+      uuid: this.uuid,
+      contentType: this.contentType,
+      content: this.content,
+      removedAt: this.removedAt,
       createdAt: this.createdAt,
       updatedAt: this.updatedAt,
       updatedBy: this.updatedBy,
     };
   }
 
-  toMetadata(): EntryMetadata {
+  getMetadata(): EntryMetadata {
     return {
-      uid: this.uid,
+      uuid: this.uuid,
       createdAt: this.createdAt,
       updatedAt: this.updatedAt,
       updatedBy: this.updatedBy,

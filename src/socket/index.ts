@@ -19,7 +19,7 @@ import {
   SynchronizationModeRecentResponseMessage,
 } from "./message";
 import { Container } from "typedi";
-import { SERVER_ID } from "../env";
+import { SERVER_UUID } from "../env";
 import {
   BadClientIdError,
   BadParameterError,
@@ -27,8 +27,8 @@ import {
   UserAuthenticationError,
 } from "../error";
 import { getManager } from "../db";
-import { Client } from "../entity/client";
-import { History, HistoryCursor } from "../entity/history";
+import { Node } from "../entity/user-agent";
+import { EntryHistory, HistoryCursor } from "../entity/entry-history";
 import { validate as uuidValidate, version as uuidVersion } from "uuid";
 import debug from "debug";
 
@@ -41,7 +41,7 @@ import { EntryService } from "../service/entry";
 
 export function setupWebsocketServer(server: WebSocketServer) {
   server.on("connection", async (socket, request) => {
-    const serverId = Container.get(SERVER_ID);
+    const serverId = Container.get(SERVER_UUID);
     let userId: string;
     let clientId: string;
 
@@ -159,8 +159,8 @@ export function setupWebsocketServer(server: WebSocketServer) {
 
     // Request entries synchronization from client to server
     {
-      const client = await manager.findOne(Client, {
-        where: { uid: clientId },
+      const client = await manager.findOne(Node, {
+        where: { uuid: clientId },
       });
       if (client) {
         logger("Client record found, try to perform a recent-sync.");
@@ -174,8 +174,8 @@ export function setupWebsocketServer(server: WebSocketServer) {
         );
         syncStatus.server2client["sync-full-meta-query-count"]++;
 
-        const client = manager.create(Client, {
-          uid: clientId,
+        const client = manager.create(Node, {
+          uuid: clientId,
           user: {
             id: userId,
           },
@@ -244,7 +244,7 @@ export function setupWebsocketServer(server: WebSocketServer) {
           }
 
           // Valid history cursor, get histories after that cursor and send relating entries to client
-          const histories = await manager.find(History, {
+          const histories = await manager.find(EntryHistory, {
             where: {
               id: MoreThan(history.id),
             },
@@ -257,7 +257,7 @@ export function setupWebsocketServer(server: WebSocketServer) {
 
           const entries = await manager.find(Entry, {
             where: {
-              uid: In(histories.map((history) => history.entryId)),
+              uuid: In(histories.map((history) => history.entryId)),
             },
           });
           const plainEntries = entries.map((entry) => entry.toPlainEntry());
@@ -315,14 +315,14 @@ export function setupWebsocketServer(server: WebSocketServer) {
           const cursor = await historyService.getLastestCursor(userId);
           const entries = await manager.find(Entry, {
             where: {
-              owner: {
+              user: {
                 id: userId,
               },
             },
             skip: skip,
             take: PAGE_SIZE,
           });
-          const meta = entries.map((entry) => entry.toMetadata());
+          const meta = entries.map((entry) => entry.getMetadata());
 
           reply(
             message,
@@ -359,7 +359,7 @@ export function setupWebsocketServer(server: WebSocketServer) {
           );
           send(
             new SynchronizationModeFullEntriesQuery(
-              fresherEntryMetadata.map((meta) => meta.uid)
+              fresherEntryMetadata.map((meta) => meta.uuid)
             )
           );
 
@@ -372,8 +372,8 @@ export function setupWebsocketServer(server: WebSocketServer) {
 
           const entries = await manager.find(Entry, {
             where: {
-              uid: In(uids),
-              owner: {
+              uuid: In(uids),
+              user: {
                 id: userId,
               },
             },
@@ -412,7 +412,7 @@ export function setupWebsocketServer(server: WebSocketServer) {
                 const manager = getManager();
                 await manager
                   .createQueryBuilder()
-                  .update(Client, {
+                  .update(Node, {
                     historyCursor: historyCursor,
                   })
                   .where({

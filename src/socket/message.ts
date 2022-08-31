@@ -1,7 +1,7 @@
 import { randomUUID } from "crypto";
 import type { JsonObject } from "type-fest";
 import { EntryMetadata, PlainEntry } from "../entity/entry";
-import { HistoryCursor } from "../entity/history";
+import { HistoryCursor } from "../entity/entry-history";
 import { ServerError } from "../error";
 
 export abstract class Message {

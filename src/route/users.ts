@@ -188,10 +188,10 @@ protectedRouter.get("/:userId/entries", async (ctx) => {
   const manager = getManager();
   const entries = await manager.find(Entry, {
     where: {
-      owner: {
+      user: {
         id: userId,
       },
-      uid: uid ? In(Array(uid).flat()) : undefined,
+      uuid: uid ? In(Array(uid).flat()) : undefined,
       isRemoved: false,
     },
     skip: (Number(page) - 1) * PAGE_SIZE,
@@ -208,8 +208,8 @@ protectedRouter.get("/:userId/entries/:entryId", async (ctx) => {
   const manager = getManager();
   const entry = await manager.findOne(Entry, {
     where: {
-      uid: entryId,
-      owner: {
+      uuid: entryId,
+      user: {
         id: userId,
       },
       isRemoved: false,
@@ -250,8 +250,8 @@ protectedRouter.put("/:userId/entries/:entryId", async (ctx) => {
 
   let entry = await manager.findOne(Entry, {
     where: {
-      uid: entryId,
-      owner: {
+      uuid: entryId,
+      user: {
         id: userId,
       },
       isRemoved: false,
@@ -283,7 +283,7 @@ protectedRouter.del("/:userId/entries/:entryId", async (ctx) => {
 
   const manager = getManager();
   let entry = await manager.findOne(Entry, {
-    where: { uid: entryId, owner: { id: userId }, isRemoved: false },
+    where: { uuid: entryId, user: { id: userId }, isRemoved: false },
   });
 
   if (!entry) {

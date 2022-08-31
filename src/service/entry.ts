@@ -1,7 +1,7 @@
 import { Inject, Service } from "typedi";
 import { DeepPartial, EntityManager, In } from "typeorm";
 import { Entry, EntryMetadata, PlainEntry } from "../entity/entry";
-import { EntryOperation } from "../entity/history";
+import { EntryOperation } from "../entity/entry-history";
 import { EntryInvalidError } from "../error";
 import { HistoryService } from "./history";
 
@@ -36,8 +36,8 @@ export class EntryService {
     }
 
     if (
-      typeof entry.owner !== "object" ||
-      typeof entry.owner.id === "undefined"
+      typeof entry.user !== "object" ||
+      typeof entry.user.id === "undefined"
     ) {
       throw new EntryInvalidError();
     }
@@ -80,10 +80,10 @@ export class EntryService {
   async updateEntryIfFresher(userId: string, entry: PlainEntry) {
     const oldEntry = await this.manager.findOne(Entry, {
       where: {
-        owner: {
+        user: {
           id: userId,
         },
-        uid: entry.uid,
+        uuid: entry.uuid,
       },
     });
     if (!oldEntry) {
@@ -100,20 +100,20 @@ export class EntryService {
   async filterFresherMetadata(
     metadata: EntryMetadata[]
   ): Promise<EntryMetadata[]> {
-    const uids = metadata.map((meta) => meta.uid);
+    const uids = metadata.map((meta) => meta.uuid);
     const relatedEntries = await this.manager.find(Entry, {
       where: {
-        uid: In(uids),
+        uuid: In(uids),
       },
     });
 
     const kvArray = relatedEntries.map(
-      (entry) => [entry.uid, entry] as [string, Entry]
+      (entry) => [entry.uuid, entry] as [string, Entry]
     );
     const uidMap = new Map(kvArray);
 
     return metadata.filter((meta) =>
-      this.isFresher(meta, uidMap.get(meta.uid))
+      this.isFresher(meta, uidMap.get(meta.uuid))
     );
   }
 }

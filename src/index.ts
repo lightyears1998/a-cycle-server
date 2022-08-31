@@ -10,7 +10,7 @@ import Router from "koa-router";
 import { Container } from "typedi";
 import {
   SERVER_HOST,
-  SERVER_ID,
+  SERVER_UUID,
   SERVER_HTTP_PORT,
   SERVER_WS_PORT,
 } from "./env";
@@ -78,7 +78,7 @@ async function bootstrap() {
   await setupDatabase();
   await setupRestfulEndpoint();
   await setupWebsocketEndpoint();
-  console.log(`Server instance ${Container.get(SERVER_ID)} is operating.`);
+  console.log(`Server instance ${Container.get(SERVER_UUID)} is operating.`);
 
   checkGcInDevelopment(
     bootstrap,

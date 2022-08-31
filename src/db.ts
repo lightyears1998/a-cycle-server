@@ -1,8 +1,8 @@
 import { DataSource, EntityManager } from "typeorm";
 import { isTrue } from "./util";
-import { SERVER_ID } from "./env";
+import { SERVER_UUID } from "./env";
 import { Container } from "typedi";
-import { Metadata } from "./entity/metadata";
+import { ServerStorage } from "./entity/server-storage";
 import { randomUUID } from "crypto";
 
 export const dataSource = new DataSource({
@@ -28,16 +28,16 @@ export async function setupEntityManager() {
 export async function setupMetadataFromDatabase() {
   const manager = getManager();
 
-  let serverIdMetadata = await manager.findOne(Metadata, {
+  let serverIdStorage = await manager.findOne(ServerStorage, {
     where: { key: "SERVER_ID" },
   });
-  if (!serverIdMetadata) {
-    serverIdMetadata = manager.create(Metadata, {
+  if (!serverIdStorage) {
+    serverIdStorage = manager.create(ServerStorage, {
       key: "SERVER_ID",
       value: randomUUID(),
     });
-    serverIdMetadata = await manager.save(serverIdMetadata);
+    serverIdStorage = await manager.save(serverIdStorage);
   }
 
-  Container.set(SERVER_ID, serverIdMetadata.value);
+  Container.set(SERVER_UUID, serverIdStorage.value);
 }

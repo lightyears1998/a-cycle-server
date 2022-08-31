@@ -1,7 +1,7 @@
 import { Column, Entity, PrimaryColumn } from "typeorm";
 
 @Entity()
-export class Metadata {
+export class ServerStorage {
   @PrimaryColumn()
   key!: string;
 

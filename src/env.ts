@@ -8,7 +8,7 @@ dotenv.config();
 /**
  * UUID to identify the server instance.
  */
-export const SERVER_ID = new Token<string>("SERVER_ID");
+export const SERVER_UUID = new Token<string>("SERVER_UUID");
 
 export const SERVER_HTTP_PORT = new Token<number>("SERVER_HTTP_PORT");
 Container.set(SERVER_HTTP_PORT, Number(process.env.SERVER_HTTP_PORT) || 5280);

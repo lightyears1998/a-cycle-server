@@ -1,8 +1,7 @@
 import { AuthenticatedWebSocket } from "./authentication";
-import { APP_NAME, isDevelopmentEnvironment } from "../util";
+import { isDevelopmentEnvironment } from "../util";
 import {
   ClientServerGoodbyeMessage,
-  ClientServerHandshakeMessage,
   ControlMessage,
   DebugNodeUpdateMessage,
   Message,
@@ -14,28 +13,23 @@ import {
   SynchronizationModeRecentResponseMessage,
 } from "./message";
 import { Container } from "typedi";
-import { SERVER_UUID, TRANSMISSION_PAGING_SIZE } from "../env";
-import {
-  BadNodeIdError,
-  BadParameterError,
-  HistoryCursorInvalidError,
-} from "../error";
+import { TRANSMISSION_PAGING_SIZE } from "../env";
+import { BadParameterError, HistoryCursorInvalidError } from "../error";
 import { getManager } from "../db";
 import { Node } from "../entity/node";
 import { EntryHistory, HistoryCursor } from "../entity/entry-history";
-
-import debug from "debug";
 import { HistoryService } from "../service/history";
 import { In, MoreThan } from "typeorm";
 import { Entry } from "../entity/entry";
 import { NodeService } from "../service/node";
 import { EntryService } from "../service/entry";
+import { UserService } from "../service/user";
 
-const manager = getManager()
-
-function initSync() {
-
-}
+const manager = getManager();
+const userService = Container.get(UserService);
+const entryService = Container.get(EntryService);
+const historyService = Container.get(HistoryService);
+const nodeService = Container.get(NodeService);
 
 export async function syncEntriesViaSocket(socket: AuthenticatedWebSocket) {
   const { serverUuid, userId, nodeUuid } = socket.authState;
@@ -55,30 +49,32 @@ export async function syncEntriesViaSocket(socket: AuthenticatedWebSocket) {
 
   // Request entries synchronization from client to server
   {
-    const client = await manager.findOne(Node, {
+    const node = await manager.findOne(Node, {
       where: { uuid: nodeUuid },
     });
-    if (client) {
+    if (node) {
       socket.log("Node record found, performing a recent-sync.");
 
       syncState.c2s["sync-recent-processing"] = true;
 
-      send(new SynchronizationModeRecentRequestMessage(client.historyCursor));
+      socket.sendMessage(
+        new SynchronizationModeRecentRequestMessage(node.historyCursor)
+      );
     } else {
       socket.log(
-        "Client record not found, record this client and then perform a full-sync."
+        "Node record not found, recording this node and performing a full-sync."
       );
       syncState.s2c["sync-full-meta-query-count"]++;
 
       const client = manager.create(Node, {
-        uuid: clientId,
+        uuid: nodeUuid,
         user: {
           id: userId,
         },
       });
       await manager.save(client);
 
-      send(new SynchronizationModeFullMetaQuery(0));
+      socket.sendMessage(new SynchronizationModeFullMetaQuery(0));
     }
   }
 
@@ -88,17 +84,19 @@ export async function syncEntriesViaSocket(socket: AuthenticatedWebSocket) {
       message = JSON.parse(data.toString());
     } catch (err) {
       if (err instanceof SyntaxError) {
-        send(new ControlMessage([new BadParameterError("Bad JSON syntax.")]));
+        socket.send(
+          new ControlMessage([new BadParameterError("Bad JSON syntax.")])
+        );
         socket.close();
         return;
       } else {
-        logger(err);
+        socket.log(err);
         throw err;
       }
     }
 
     if (typeof message.session !== "string" || message.session === "") {
-      send(
+      socket.send(
         new ControlMessage([
           new BadParameterError(
             "Messsage should contain an non-empty session of string type."
@@ -112,7 +110,7 @@ export async function syncEntriesViaSocket(socket: AuthenticatedWebSocket) {
     // Handle message accroding to message type
     switch (message.type) {
       case "": {
-        reply(
+        socket.replyMessage(
           message,
           new ControlMessage([
             new BadParameterError(
@@ -130,7 +128,10 @@ export async function syncEntriesViaSocket(socket: AuthenticatedWebSocket) {
         const history = await historyService.locateHistoryCursor(historyCursor);
         if (!history) {
           // Broken history cursor, which indicates client to fall back to full sync.
-          reply(message, new ControlMessage([new HistoryCursorInvalidError()]));
+          socket.replyMessage(
+            message,
+            new ControlMessage([new HistoryCursorInvalidError()])
+          );
           break;
         }
 
@@ -153,7 +154,7 @@ export async function syncEntriesViaSocket(socket: AuthenticatedWebSocket) {
         });
         const plainEntries = entries.map((entry) => entry.toPlain());
 
-        reply(
+        socket.replyMessage(
           message,
           new SynchronizationModeRecentResponseMessage(
             nextHistroyCursor,
@@ -170,7 +171,7 @@ export async function syncEntriesViaSocket(socket: AuthenticatedWebSocket) {
           // We have to fallback to sync-full.
           syncState.c2s["sync-recent-processing"] = false;
           syncState.s2c["sync-full-meta-query-count"]++;
-          send(new SynchronizationModeFullMetaQuery(0));
+          socket.sendMessage(new SynchronizationModeFullMetaQuery(0));
 
           break;
         }
@@ -183,9 +184,9 @@ export async function syncEntriesViaSocket(socket: AuthenticatedWebSocket) {
             return entryService.updateEntryIfFresher(userId, entry);
           })
         );
-        await clientService.updateClientHistoryCursor(
+        await nodeService.updateClientHistoryCursor(
           userId,
-          clientId,
+          nodeUuid,
           historyCursor
         );
 
@@ -194,7 +195,9 @@ export async function syncEntriesViaSocket(socket: AuthenticatedWebSocket) {
           syncState.c2s["sync-recent-processing"] = false;
         } else {
           // Continue to request client for sync-recent with lastest histroy cursor
-          send(new SynchronizationModeRecentRequestMessage(historyCursor));
+          socket.sendMessage(
+            new SynchronizationModeRecentRequestMessage(historyCursor)
+          );
         }
 
         break;
@@ -214,7 +217,7 @@ export async function syncEntriesViaSocket(socket: AuthenticatedWebSocket) {
         });
         const meta = entries.map((entry) => entry.getMetadata());
 
-        reply(
+        socket.replyMessage(
           message,
           new SynchronizationModeFullMetaResponse(skip, cursor, meta)
         );
@@ -228,16 +231,11 @@ export async function syncEntriesViaSocket(socket: AuthenticatedWebSocket) {
         ).payload;
 
         if (skip === 0 && currentCursor) {
-          syncState.c2s["cursor-when-sync-full-started"] =
-            currentCursor;
+          syncState.c2s["cursor-when-sync-full-started"] = currentCursor;
         }
 
-        if (
-          !syncState.c2s["cursor-when-sync-full-started"] &&
-          currentCursor
-        ) {
-          syncState.c2s["cursor-when-sync-full-started"] =
-            currentCursor;
+        if (!syncState.c2s["cursor-when-sync-full-started"] && currentCursor) {
+          syncState.c2s["cursor-when-sync-full-started"] = currentCursor;
         }
 
         if (entryMetadata.length === 0) {
@@ -246,7 +244,7 @@ export async function syncEntriesViaSocket(socket: AuthenticatedWebSocket) {
 
         const fresherEntryMetadata =
           await entryService.filterFresherEntryMetadata(entryMetadata);
-        send(
+        socket.sendMessage(
           new SynchronizationModeFullEntriesQuery(
             fresherEntryMetadata.map((meta) => meta.uuid)
           )
@@ -256,12 +254,13 @@ export async function syncEntriesViaSocket(socket: AuthenticatedWebSocket) {
       }
 
       case "sync-full-entries-query": {
-        const { uids } = (message as SynchronizationModeFullEntriesQuery)
-          .payload;
+        const { uuids: uuids } = (
+          message as SynchronizationModeFullEntriesQuery
+        ).payload;
 
         const entries = await manager.find(Entry, {
           where: {
-            uuid: In(uids),
+            uuid: In(uuids),
             user: {
               id: userId,
             },
@@ -270,7 +269,7 @@ export async function syncEntriesViaSocket(socket: AuthenticatedWebSocket) {
 
         const plainEntries = entries.map((entry) => entry.toPlain());
 
-        reply(
+        socket.replyMessage(
           message,
           new SynchronizationModeFullEntriesResponse(plainEntries)
         );
@@ -304,20 +303,20 @@ export async function syncEntriesViaSocket(socket: AuthenticatedWebSocket) {
                   historyCursor: historyCursor,
                 })
                 .where({
-                  uid: clientId,
+                  uuid: nodeUuid,
                 })
                 .execute();
 
-              reply(message, new ControlMessage());
+              socket.replyMessage(message, new ControlMessage());
               break;
             }
 
             default: {
-              replyUnrecognizedMessage(message);
+              socket.replyUnrecognizedMessage(message);
             }
           }
         } else {
-          replyUnrecognizedMessage(message);
+          socket.replyUnrecognizedMessage(message);
         }
       }
     }
@@ -342,23 +341,20 @@ export async function syncEntriesViaSocket(socket: AuthenticatedWebSocket) {
 
     // If we are not syncing anything from client, then say goodbye to client
     if (!syncRecentOngoing() && !syncFullOngoing()) {
-      send(new ClientServerGoodbyeMessage());
-      syncState.s2c.said-goodbye = true;
+      socket.sendMessage(new ClientServerGoodbyeMessage());
+      syncState.s2c["said-goodbye"] = true;
     }
 
     // If both client and server have said goodbye, do cleanup and disconnect
-    if (syncState.c2s.said-goodbye && syncState.s2c.said-goodbye) {
+    if (syncState.c2s["said-goodbye"] && syncState.s2c["said-goodbye"]) {
       socket.close();
 
       // If a sync-full has completed successfully,
       // update cursor so that next sync could be accelerated.
-      if (
-        syncFullSucceed() &&
-        syncState.c2s["cursor-when-sync-full-started"]
-      ) {
-        await clientService.updateClientHistoryCursor(
+      if (syncFullSucceed() && syncState.c2s["cursor-when-sync-full-started"]) {
+        await nodeService.updateClientHistoryCursor(
           userId,
-          clientId,
+          nodeUuid,
           syncState.c2s["cursor-when-sync-full-started"]
         );
       }

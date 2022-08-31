@@ -10,13 +10,13 @@ export class NodeService {
 
   async updateClientHistoryCursor(
     userId: string,
-    clientId: string,
+    nodeUuid: string,
     historyCursor: HistoryCursor
   ) {
     await this.manager.update(
       Node,
       {
-        uid: clientId,
+        uuid: nodeUuid,
         user: {
           id: userId,
         },

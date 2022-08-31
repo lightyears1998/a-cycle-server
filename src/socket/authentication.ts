@@ -9,7 +9,7 @@ import { ClientServerHandshakeMessage } from "./message";
 import { MessageStreamingWebsocket } from "./message-streaming";
 import jwt from "jsonwebtoken";
 import { validate as uuidValidate, version as uuidVersion } from "uuid";
-import Container from "typedi";
+import { Container } from "typedi";
 import { SERVER_UUID } from "../env";
 import debug from "debug";
 

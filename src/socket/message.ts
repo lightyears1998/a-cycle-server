@@ -111,12 +111,12 @@ export class SynchronizationModeFullMetaResponse extends Message {
 export class SynchronizationModeFullEntriesQuery extends Message {
   type = "sync-full-entries-query";
   payload = {
-    uids: [] as Array<string>,
+    uuids: [] as Array<string>,
   };
 
-  constructor(uids: string[]) {
+  constructor(uuids: string[]) {
     super();
-    this.payload.uids = uids;
+    this.payload.uuids = uuids;
   }
 }
 

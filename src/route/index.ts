@@ -1,4 +1,6 @@
 import Router from "koa-router";
+import { Container } from "typedi";
+import { SERVER_ENDPOINT_PREFIX } from "../env";
 import appInfoRouter from "./app-info";
 import { contentNormalizationMiddleware } from "./middleware/content-normalization";
 import { errorHandlingMiddleware } from "./middleware/error-handling";
@@ -16,6 +18,8 @@ class Route {
 }
 
 export function setupRouter(router: Router) {
+  router.prefix(Container.get(SERVER_ENDPOINT_PREFIX));
+
   router.use(contentNormalizationMiddleware);
   router.use(errorHandlingMiddleware);
   router.use(timestampCheckMiddleware);

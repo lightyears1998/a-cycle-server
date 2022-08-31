@@ -12,6 +12,7 @@ import {
   SERVER_UUID,
   SERVER_HTTP_PORT,
   SERVER_WS_PORT,
+  SERVER_ENDPOINT_PREFIX,
 } from "./env";
 import { WebSocketServer } from "ws";
 
@@ -52,6 +53,7 @@ async function setupRestfulEndpoint() {
 }
 
 async function setupWebsocketEndpoint() {
+  const path = `${Container.get(SERVER_ENDPOINT_PREFIX)}/socket`;
   const port = Container.get(SERVER_WS_PORT);
   const host = Container.get(SERVER_HOST);
 
@@ -60,7 +62,7 @@ async function setupWebsocketEndpoint() {
       {
         host,
         port,
-        path: "/socket",
+        path,
       },
       async () => {
         (await import("./socket")).setupWebsocketServer(websocketServer);

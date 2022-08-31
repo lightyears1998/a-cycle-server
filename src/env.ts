@@ -10,6 +10,11 @@ dotenv.config();
  */
 export const SERVER_UUID = new Token<string>("SERVER_UUID");
 
+export const SERVER_ENDPOINT_PREFIX = new Token<string>(
+  "SERVER_ENDPOINT_PREFIX"
+);
+Container.set(SERVER_ENDPOINT_PREFIX, "/api");
+
 export const SERVER_HTTP_PORT = new Token<number>("SERVER_HTTP_PORT");
 Container.set(SERVER_HTTP_PORT, Number(process.env.SERVER_HTTP_PORT) || 5280);
 

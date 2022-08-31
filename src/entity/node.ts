@@ -22,7 +22,7 @@ export class Node {
   @ManyToOne(() => User)
   user!: User;
 
-  @Column({ type: "json", default: "null" })
+  @Column({ type: "jsonb", default: "null" })
   historyCursor!: HistoryCursor;
 
   @CreateDateColumn({ type: "timestamptz" })

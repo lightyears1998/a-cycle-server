@@ -21,7 +21,7 @@ export class Entry implements SoftDeletableObject {
   @Column({ nullable: false })
   contentType!: string;
 
-  @Column({ type: "json", default: "null" })
+  @Column({ type: "jsonb", default: "null" })
   content!: JsonValue;
 
   @Column({ type: "timestamptz", nullable: true })

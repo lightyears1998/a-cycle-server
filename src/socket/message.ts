@@ -28,15 +28,15 @@ export class ClientServerHandshakeMessage extends Message {
 
   constructor(
     error: Array<ServerError>,
-    serverId?: string,
+    serverUuid?: string,
     userId?: string,
-    clientId?: string
+    clientUuid?: string
   ) {
     super();
     this.errors = error;
-    this.payload.serverId = serverId;
+    this.payload.serverId = serverUuid;
     this.payload.userId = userId;
-    this.payload.clientId = clientId;
+    this.payload.clientId = clientUuid;
   }
 }
 
@@ -135,8 +135,8 @@ export class SynchronizationModeFullEntriesResponse extends Message {
 /**
  * For debug only
  */
-export class DebugClientUpdateMessage extends Message {
-  type = "debug-client-update";
+export class DebugNodeUpdateMessage extends Message {
+  type = "debug-node-update";
   payload = {
     historyCursor: {} as HistoryCursor,
   };

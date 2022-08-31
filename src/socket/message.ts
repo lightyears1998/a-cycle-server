@@ -8,7 +8,7 @@ export abstract class Message {
   session: string = randomUUID();
   type!: string;
   errors: Array<ServerError> = [];
-  payload: Record<string, unknown> = {};
+  payload: unknown = {};
   timestamp = new Date();
 }
 
@@ -22,9 +22,14 @@ export class ControlMessage extends Message {
   }
 }
 
-export class ClientServerHandshakeMessage extends Message {
-  session = "client-server-connection";
-  type = "cs-handshake";
+export class HandshakeMessage extends Message {
+  session = "handshake";
+  type = "handshake";
+  declare payload: {
+    serverUuid: string | undefined;
+    userId: string | undefined;
+    clientUuid: string | undefined;
+  };
 
   constructor(
     error: Array<ServerError>,
@@ -34,18 +39,18 @@ export class ClientServerHandshakeMessage extends Message {
   ) {
     super();
     this.errors = error;
-    this.payload.serverId = serverUuid;
+    this.payload.serverUuid = serverUuid;
     this.payload.userId = userId;
-    this.payload.clientId = clientUuid;
+    this.payload.clientUuid = clientUuid;
   }
 }
 
-export class ClientServerGoodbyeMessage extends Message {
-  session = "client-server-connection";
-  type = "cs-goodbye";
+export class GoodbyeMessage extends Message {
+  session = "goodbye";
+  type = "goodbye";
 }
 
-export class SynchronizationModeRecentRequestMessage extends Message {
+export class SyncModeRecentRequestMessage extends Message {
   type = "sync-recent-request";
   payload = {
     historyCursor: {} as HistoryCursor,
@@ -62,7 +67,7 @@ export class SynchronizationModeRecentRequestMessage extends Message {
   }
 }
 
-export class SynchronizationModeRecentResponseMessage extends Message {
+export class SyncModeRecentResponseMessage extends Message {
   type = "sync-recent-response";
   payload = {
     historyCursor: {} as HistoryCursor,
@@ -76,7 +81,7 @@ export class SynchronizationModeRecentResponseMessage extends Message {
   }
 }
 
-export class SynchronizationModeFullMetaQuery extends Message {
+export class SyncModeFullMetaQueryMessage extends Message {
   type = "sync-full-meta-query";
   payload = {
     skip: 0,
@@ -88,7 +93,7 @@ export class SynchronizationModeFullMetaQuery extends Message {
   }
 }
 
-export class SynchronizationModeFullMetaResponse extends Message {
+export class SyncModeFullMetaResponseMessage extends Message {
   type = "sync-full-meta-response";
   payload = {
     skip: 0,
@@ -108,7 +113,7 @@ export class SynchronizationModeFullMetaResponse extends Message {
   }
 }
 
-export class SynchronizationModeFullEntriesQuery extends Message {
+export class SyncModeFullEntriesQueryMessage extends Message {
   type = "sync-full-entries-query";
   payload = {
     uuids: [] as Array<string>,
@@ -120,7 +125,7 @@ export class SynchronizationModeFullEntriesQuery extends Message {
   }
 }
 
-export class SynchronizationModeFullEntriesResponse extends Message {
+export class SyncModeFullEntriesResponseMessage extends Message {
   type = "sync-full-entries-response";
   payload = {
     entries: [] as PlainEntry[],

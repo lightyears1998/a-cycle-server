@@ -5,7 +5,7 @@ import {
   UserAuthenticationError,
 } from "../error";
 import { APP_NAME, getJwtTokenFromHttpAuthenticationHeader } from "../util";
-import { ClientServerHandshakeMessage } from "./message";
+import { HandshakeMessage } from "./message";
 import { MessageStreamingWebsocket } from "./message-streaming";
 import jwt from "jsonwebtoken";
 import { validate as uuidValidate, version as uuidVersion } from "uuid";
@@ -20,9 +20,10 @@ export class AuthenticatedSocketState {
 }
 
 export type AuthenticatedWebSocket = MessageStreamingWebsocket & {
-  authState: AuthenticatedSocketState;
   logger: debug.Debugger;
-  log: (...args: unknown[]) => void;
+  log: (formatter: unknown, ...args: unknown[]) => void;
+
+  authState: AuthenticatedSocketState;
 };
 
 function log(
@@ -42,7 +43,7 @@ function doHandshake(
 
   if (!token) {
     socket.sendMessage(
-      new ClientServerHandshakeMessage([new BadParameterError("No token.")])
+      new HandshakeMessage([new BadParameterError("No token.")])
     );
     return false;
   }
@@ -50,16 +51,14 @@ function doHandshake(
   const jwtPayload = jwt.decode(token);
   if (!jwtPayload) {
     socket.sendMessage(
-      new ClientServerHandshakeMessage([
-        new UserAuthenticationError("Fail to decode JWT."),
-      ])
+      new HandshakeMessage([new UserAuthenticationError("Fail to decode JWT.")])
     );
     return false;
   }
 
   if (typeof jwtPayload !== "object") {
     socket.sendMessage(
-      new ClientServerHandshakeMessage([
+      new HandshakeMessage([
         new UserAuthenticationError("JWT payload should be object."),
       ])
     );
@@ -69,18 +68,14 @@ function doHandshake(
   const userId = jwtPayload.userId;
   if (!userId) {
     socket.sendMessage(
-      new ClientServerHandshakeMessage([
-        new UserAuthenticationError("`userId` not found."),
-      ])
+      new HandshakeMessage([new UserAuthenticationError("`userId` not found.")])
     );
     return false;
   }
 
   const nodeUuid = String(request.headers["a-cycle-client-uuid"]);
   if (!uuidValidate(nodeUuid) || !(uuidVersion(nodeUuid) === 4)) {
-    socket.sendMessage(
-      new ClientServerHandshakeMessage([new BadNodeIdError()])
-    );
+    socket.sendMessage(new HandshakeMessage([new BadNodeIdError()]));
     return false;
   }
 
@@ -90,12 +85,7 @@ function doHandshake(
   socket.logger = debug(`${APP_NAME}:${userId}:${nodeUuid}`);
 
   socket.sendMessage(
-    new ClientServerHandshakeMessage(
-      [],
-      socket.authState.serverUuid,
-      userId,
-      nodeUuid
-    )
+    new HandshakeMessage([], socket.authState.serverUuid, userId, nodeUuid)
   );
 
   socket.log("Handshake finished.");

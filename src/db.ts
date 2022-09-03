@@ -1,19 +1,30 @@
 import { DataSource, EntityManager } from "typeorm";
-import { isTrue } from "./util";
-import { SERVER_UUID } from "./env";
-import { Container } from "typedi";
+import {
+  ADMIN_TOKEN,
+  DEV_DATABASE_LOGGING,
+  DEV_DATABASE_SYNC,
+  PG_DATABASE,
+  PG_HOST,
+  PG_PASSWORD,
+  PG_PORT,
+  PG_USERNAME,
+  SERVER_UUID,
+  USER_REGISTRATION_ENABLED,
+} from "./env";
+import { Container, Token } from "typedi";
 import { ServerStorage } from "./entity/server-storage";
 import { randomUUID } from "crypto";
+import type { JsonValue } from "type-fest";
 
 export const dataSource = new DataSource({
   type: "postgres",
-  host: process.env.PG_HOST,
-  port: Number(process.env.PG_PORT) || 5432,
-  database: process.env.PG_DATABASE || "acycle",
-  username: process.env.PG_USERNAME || "acycle",
-  password: process.env.PG_PASSWORD,
-  logging: isTrue(process.env.DEV_DATABASE_LOGGING),
-  synchronize: isTrue(process.env.DEV_DATABASE_SYNC),
+  host: Container.get(PG_HOST),
+  port: Container.get(PG_PORT),
+  database: Container.get(PG_DATABASE),
+  username: Container.get(PG_USERNAME),
+  password: Container.get(PG_PASSWORD),
+  logging: Container.get(DEV_DATABASE_LOGGING),
+  synchronize: Container.get(DEV_DATABASE_SYNC),
   entities: [`${__dirname}/entity/**/*.{ts,js}`],
 });
 
@@ -25,19 +36,48 @@ export async function setupEntityManager() {
   Container.set(EntityManager, getManager());
 }
 
-export async function setupMetadataFromDatabase() {
+export async function loadMetadataFromServerStorage() {
   const manager = getManager();
 
-  let serverIdStorage = await manager.findOne(ServerStorage, {
-    where: { key: "SERVER_ID" },
-  });
-  if (!serverIdStorage) {
-    serverIdStorage = manager.create(ServerStorage, {
-      key: "SERVER_ID",
-      value: randomUUID(),
-    });
-    serverIdStorage = await manager.save(serverIdStorage);
-  }
+  type Tuple<T extends JsonValue> = [
+    token: Token<T>,
+    key: string,
+    defaultValue?: T
+  ];
 
-  Container.set(SERVER_UUID, serverIdStorage.value);
+  const load = async <T extends JsonValue>([
+    token,
+    key,
+    defaultValue,
+  ]: Tuple<T>) => {
+    let storage = await manager.findOne(ServerStorage, {
+      where: { key: key },
+    });
+    if (!storage && typeof defaultValue !== "undefined") {
+      storage = manager.create(ServerStorage, {
+        key: key,
+        value: defaultValue,
+      });
+      storage = await manager.save(storage);
+    }
+
+    if (storage) {
+      Container.set(token, storage.value);
+    }
+  };
+
+  const metadata: Array<Tuple<string | number | boolean>> = [
+    [SERVER_UUID, "SERVER_UUID", randomUUID()],
+    [USER_REGISTRATION_ENABLED, "USER_REGISTRATION_ENABLED", false],
+    [ADMIN_TOKEN, "ADMIN_TOKEN", Container.get(ADMIN_TOKEN) || ""],
+  ];
+  await Promise.allSettled(
+    metadata.map(
+      (tuple) =>
+        new Promise<void>(async (resolve) => {
+          await load(tuple);
+          resolve();
+        })
+    )
+  );
 }

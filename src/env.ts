@@ -27,10 +27,22 @@ Container.set(SERVER_HOST, process.env.SERVER_HOST || "localhost");
 export const USER_REGISTRATION_ENABLED = new Token<boolean>(
   "USER_REGISTRATION_ENABLED"
 );
-Container.set(
-  USER_REGISTRATION_ENABLED,
-  isTrue(process.env.SERVER_ENABLE_USER_REGISTRATION)
-);
+
+export const PG_HOST = new Token<string>("PG_HOST");
+export const PG_PORT = new Token<number>("PG_PORT");
+export const PG_DATABASE = new Token<string>("PG_DATABASE");
+export const PG_USERNAME = new Token<string>("PG_USERNAME");
+export const PG_PASSWORD = new Token<string>("PG_PASSWORD");
+Container.set(PG_HOST, process.env.PG_HOST || "localhost");
+Container.set(PG_PORT, Number(process.env.PG_PORT) || 5432);
+Container.set(PG_DATABASE, process.env.PG_DATABASE || "acycle");
+Container.set(PG_USERNAME, process.env.PG_USERNAME || "acycle");
+Container.set(PG_PASSWORD, process.env.PG_PASSWORD || "pa$$w0rd");
+
+export const DEV_DATABASE_LOGGING = new Token<boolean>("DEV_DATABASE_LOGGING");
+export const DEV_DATABASE_SYNC = new Token<boolean>("DEV_DATABASE_SYNC");
+Container.set(DEV_DATABASE_LOGGING, isTrue(process.env.DEV_DATABASE_LOGGING));
+Container.set(DEV_DATABASE_SYNC, isTrue(process.env.DEV_DATABASE_SYNC));
 
 /**
  * In some routing, admin token are used to bypass some checks,
@@ -38,7 +50,7 @@ Container.set(
  * Set it to `""` to disable bypass.
  */
 export const ADMIN_TOKEN = new Token<string>("ADMIN_TOKEN");
-Container.set(ADMIN_TOKEN, process.env.SERVER_ADMIN_TOKEN || "");
+Container.set(ADMIN_TOKEN, process.env.SERVER_DEFAULT_ADMIN_TOKEN || "");
 
 export const JWT_SECRET_TOKEN = new Token<string>("JWT_SECRET");
 Container.set(

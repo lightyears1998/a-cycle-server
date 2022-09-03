@@ -25,7 +25,7 @@ async function setupDatabase() {
   const databaseModule = await import("./db");
   await databaseModule.dataSource.initialize();
   await databaseModule.setupEntityManager();
-  await databaseModule.setupMetadataFromDatabase();
+  await databaseModule.loadMetadataFromServerStorage();
   logger("Database setup.");
 }
 

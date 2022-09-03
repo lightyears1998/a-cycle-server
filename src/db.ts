@@ -1,6 +1,5 @@
 import { DataSource, EntityManager } from "typeorm";
 import {
-  ADMIN_TOKEN,
   DEV_DATABASE_LOGGING,
   DEV_DATABASE_SYNC,
   PG_DATABASE,
@@ -8,13 +7,11 @@ import {
   PG_PASSWORD,
   PG_PORT,
   PG_USERNAME,
-  SERVER_UUID,
-  USER_REGISTRATION_ENABLED,
 } from "./env";
-import { Container, Token } from "typedi";
+import { Container } from "typedi";
 import { ServerStorage } from "./entity/server-storage";
-import { randomUUID } from "crypto";
 import type { JsonValue } from "type-fest";
+import { MetadataTuple, metadataTuples } from "./metadata";
 
 export const dataSource = new DataSource({
   type: "postgres",
@@ -39,17 +36,11 @@ export async function setupEntityManager() {
 export async function loadMetadataFromServerStorage() {
   const manager = getManager();
 
-  type Tuple<T extends JsonValue> = [
-    token: Token<T>,
-    key: string,
-    defaultValue?: T
-  ];
-
   const load = async <T extends JsonValue>([
     token,
     key,
     defaultValue,
-  ]: Tuple<T>) => {
+  ]: MetadataTuple<T>) => {
     let storage = await manager.findOne(ServerStorage, {
       where: { key: key },
     });
@@ -66,13 +57,8 @@ export async function loadMetadataFromServerStorage() {
     }
   };
 
-  const metadata: Array<Tuple<string | number | boolean>> = [
-    [SERVER_UUID, "SERVER_UUID", randomUUID()],
-    [USER_REGISTRATION_ENABLED, "USER_REGISTRATION_ENABLED", false],
-    [ADMIN_TOKEN, "ADMIN_TOKEN", Container.get(ADMIN_TOKEN) || ""],
-  ];
   await Promise.allSettled(
-    metadata.map(
+    metadataTuples.map(
       (tuple) =>
         new Promise<void>(async (resolve) => {
           await load(tuple);

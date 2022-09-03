@@ -5,9 +5,13 @@ export const APP_ROOT = __dirname;
 
 export const logger = debug(APP_NAME);
 
-export function isTrue(val: string | undefined) {
+export function isTrue(val: undefined | boolean | string) {
   if (typeof val === "undefined") {
     return false;
+  }
+
+  if (typeof val === "boolean") {
+    return val;
   }
 
   if (Number(val) > 0) {

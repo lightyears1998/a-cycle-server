@@ -6,6 +6,7 @@ import { contentNormalizationMiddleware } from "./middleware/content-normalizati
 import { errorHandlingMiddleware } from "./middleware/error-handling";
 import { timestampCheckMiddleware } from "./middleware/timestamp-check";
 import usersRouter from "./users";
+import adminRouter from "./admin";
 
 class Route {
   path: string;
@@ -28,6 +29,7 @@ export function setupRouter(router: Router) {
     new Route("/", appInfoRouter),
     new Route("/server/info", appInfoRouter),
     new Route("/users", usersRouter),
+    new Route("/admin", adminRouter),
   ];
 
   for (const route of routes) {

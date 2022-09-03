@@ -1,5 +1,5 @@
 import { Inject, Service } from "typedi";
-import { EntityManager, In } from "typeorm";
+import { EntityManager, In, IsNull } from "typeorm";
 import { Entry, EntryMetadata, PlainEntry } from "../entity/entry";
 import { EntryOperation } from "../entity/entry-history";
 import { HistoryService } from "./history";
@@ -19,6 +19,21 @@ export class EntryService {
     const savedEntry = await this.manager.save(Entry, entry);
     this.historyService.commitEntryOperation(entry as Entry, operation);
     return savedEntry;
+  }
+
+  async getEntryOfUserByUuid(
+    entryUuid: string,
+    userId: string
+  ): Promise<Entry | null> {
+    return this.manager.findOne(Entry, {
+      where: {
+        uuid: entryUuid,
+        user: {
+          id: userId,
+        },
+        removedAt: IsNull(),
+      },
+    });
   }
 
   isFresher(
@@ -72,10 +87,10 @@ export class EntryService {
   async filterFresherEntryMetadata(
     metadata: EntryMetadata[]
   ): Promise<EntryMetadata[]> {
-    const uids = metadata.map((meta) => meta.uuid);
+    const uuids = metadata.map((meta) => meta.uuid);
     const relatedEntries = await this.manager.find(Entry, {
       where: {
-        uuid: In(uids),
+        uuid: In(uuids),
       },
     });
 

@@ -195,16 +195,7 @@ protectedRouter.get("/:userId/entries", async (ctx) => {
 protectedRouter.get("/:userId/entries/:entryUuid", async (ctx) => {
   const { userId, entryUuid } = ctx.params;
 
-  const manager = getManager();
-  const entry = await manager.findOne(Entry, {
-    where: {
-      uuid: entryUuid,
-      user: {
-        id: userId,
-      },
-      removedAt: IsNull(),
-    },
-  });
+  const entry = await entryService.getEntryOfUserByUuid(entryUuid, userId);
 
   ctx.body = {
     entry: entry ? entry.toPlain() : entry,
@@ -236,15 +227,7 @@ protectedRouter.put("/:userId/entries/:entryUuid", async (ctx) => {
   const { userId, entryUuid } = ctx.params;
   const updatedAt = new Date();
 
-  const entry = await manager.findOne(Entry, {
-    where: {
-      uuid: entryUuid,
-      user: {
-        id: userId,
-      },
-      removedAt: IsNull(),
-    },
-  });
+  const entry = await entryService.getEntryOfUserByUuid(entryUuid, userId);
   if (!entry) {
     ctx.body = {
       entry: null,

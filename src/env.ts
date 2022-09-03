@@ -1,7 +1,7 @@
 import { Container, Token } from "typedi";
 import Randomstring from "randomstring";
 import dotenv from "dotenv";
-import { isTrue } from "./util";
+import { isDevelopmentEnvironment, isTrue } from "./util";
 
 dotenv.config();
 
@@ -42,7 +42,14 @@ Container.set(PG_PASSWORD, process.env.PG_PASSWORD || "pa$$w0rd");
 export const DEV_DATABASE_LOGGING = new Token<boolean>("DEV_DATABASE_LOGGING");
 export const DEV_DATABASE_SYNC = new Token<boolean>("DEV_DATABASE_SYNC");
 Container.set(DEV_DATABASE_LOGGING, isTrue(process.env.DEV_DATABASE_LOGGING));
-Container.set(DEV_DATABASE_SYNC, isTrue(process.env.DEV_DATABASE_SYNC));
+Container.set(
+  DEV_DATABASE_SYNC,
+  isTrue(
+    typeof process.env.DEV_DATABASE_SYNC !== "undefined"
+      ? process.env.DEV_DATABASE_SYNC
+      : isDevelopmentEnvironment()
+  )
+);
 
 /**
  * In some routing, admin token are used to bypass some checks,

@@ -14,12 +14,4 @@ export class UserService {
     });
     return user;
   }
-
-  checkPasswordStrength(password: string) {
-    if (password.length < 8) {
-      throw new BadParameterError(
-        "Password should be longger than 8 characters."
-      );
-    }
-  }
 }

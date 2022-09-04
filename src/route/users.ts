@@ -51,21 +51,19 @@ router.get("/", async (ctx) => {
 
 // Register a new user
 router.post("/", async (ctx) => {
-  const { password, username } = ctx.request.body;
+  const { passwordSha256, username } = ctx.request.body;
 
   if (!Container.get(USER_REGISTRATION_ENABLED)) {
     throw new UserRegistrationProhibitedError();
   }
 
-  if (!password) {
-    throw new BadParameterError("`password` is required.");
+  if (!passwordSha256) {
+    throw new BadParameterError("`passwordSha256` is required.");
   }
 
   if (!username) {
     throw new BadParameterError("`username` is required.");
   }
-
-  userService.checkPasswordStrength(password);
 
   let user = await userService.getUserByUsername(username);
   if (user) {
@@ -74,7 +72,7 @@ router.post("/", async (ctx) => {
 
   user = manager.create(User, {
     username,
-    passwordHash: await bcrypt.hash(password, await bcrypt.genSalt()),
+    passwordHash: await bcrypt.hash(passwordSha256, await bcrypt.genSalt()),
   });
   user = await manager.save(user);
 
@@ -84,10 +82,10 @@ router.post("/", async (ctx) => {
 // Request JWT Token (aka. User login)
 router.post("/:userId/jwt-tokens", async (ctx) => {
   const { userId } = ctx.params;
-  const { password } = ctx.request.body;
+  const { passwordSha256 } = ctx.request.body;
 
-  if (!password) {
-    throw new BadParameterError("`password` is required.");
+  if (!passwordSha256) {
+    throw new BadParameterError("`passwordSha256` is required.");
   }
 
   const user = await manager.findOne(User, {
@@ -98,7 +96,10 @@ router.post("/:userId/jwt-tokens", async (ctx) => {
     throw new UserNotFoundError();
   }
 
-  const passwordsMatched = await bcrypt.compare(password, user.passwordHash);
+  const passwordsMatched = await bcrypt.compare(
+    passwordSha256,
+    user.passwordHash
+  );
   if (!passwordsMatched) {
     throw new UserAuthenticationError();
   }
@@ -110,7 +111,7 @@ router.post("/:userId/jwt-tokens", async (ctx) => {
 // Reset password
 router.get("/:userId/password/reset", async (ctx) => {
   const { userId } = ctx.params;
-  const { adminToken, password } = ctx.request.body;
+  const { adminToken, passwordSha256 } = ctx.request.body;
 
   if (!adminToken) {
     throw new BadParameterError("`adminToken` is required.");
@@ -120,8 +121,8 @@ router.get("/:userId/password/reset", async (ctx) => {
     throw new AdminTokenAuthenticationError();
   }
 
-  if (!password) {
-    throw new BadParameterError("`password` is required.");
+  if (!passwordSha256) {
+    throw new BadParameterError("`passwordSha256` is required.");
   }
 
   let user = await manager.findOne(User, {
@@ -131,7 +132,7 @@ router.get("/:userId/password/reset", async (ctx) => {
     throw new UserNotFoundError();
   }
 
-  user.passwordHash = await bcrypt.hash(password, await genSalt());
+  user.passwordHash = await bcrypt.hash(passwordSha256, await genSalt());
   user = await manager.save(user);
 
   ctx.body = {
@@ -149,13 +150,11 @@ protectedRouter.use(
 // Update password
 protectedRouter.put("/:userId/password", async (ctx) => {
   const { userId } = ctx.params;
-  const { password } = ctx.request.body;
+  const { passwordSha256 } = ctx.request.body;
 
-  if (!password) {
-    throw new BadParameterError("`password` is required.");
+  if (!passwordSha256) {
+    throw new BadParameterError("`passwordSha256` is required.");
   }
-
-  userService.checkPasswordStrength(password);
 
   let user = await manager.findOne(User, {
     where: { id: userId, removedAt: IsNull() },
@@ -164,7 +163,7 @@ protectedRouter.put("/:userId/password", async (ctx) => {
     throw new UserNotFoundError();
   }
 
-  user.passwordHash = await bcrypt.hash(password, await bcrypt.genSalt());
+  user.passwordHash = await bcrypt.hash(passwordSha256, await bcrypt.genSalt());
   user = await manager.save(user);
 
   ctx.body = { user: user.toPlain() };

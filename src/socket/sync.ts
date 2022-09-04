@@ -24,7 +24,7 @@ import { Entry } from "../entity/entry";
 import { NodeService } from "../service/node";
 import { EntryService } from "../service/entry";
 import { RawData } from "ws";
-import { isDevelopmentEnvironment } from "../util";
+import { checkGcInDevelopment, isDevelopmentEnvironment } from "../util";
 
 const manager = getManager();
 const entryService = Container.get(EntryService);
@@ -447,6 +447,7 @@ export async function doSync(socket: SyncingWebSocket) {
     ) {
       socket.close();
       await cleanUpAfterSyncFull(socket);
+      checkGcInDevelopment(socket);
     }
   });
 }

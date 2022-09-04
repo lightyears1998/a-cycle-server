@@ -1,6 +1,7 @@
 import Router from "koa-router";
 import fs from "fs-extra";
 import type { PackageJson } from "type-fest";
+import { isDevelopmentEnvironment } from "../util";
 
 const router = new Router();
 
@@ -24,6 +25,7 @@ router.all("/", (ctx) => {
       name: appName,
       description: appDescription,
       version: appVersion,
+      developerMode: isDevelopmentEnvironment(),
     },
   };
 });

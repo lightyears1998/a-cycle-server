@@ -7,6 +7,7 @@ import { errorHandlingMiddleware } from "./middleware/error-handling";
 import { timestampCheckMiddleware } from "./middleware/timestamp-check";
 import usersRouter from "./users";
 import adminRouter from "./admin";
+import utilsRouter from "./utils";
 
 class Route {
   path: string;
@@ -30,6 +31,7 @@ export function setupRouter(router: Router) {
     new Route("/server/info", appInfoRouter),
     new Route("/users", usersRouter),
     new Route("/admin", adminRouter),
+    new Route("/utils", utilsRouter),
   ];
 
   for (const route of routes) {

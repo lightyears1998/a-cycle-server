@@ -5,10 +5,12 @@
   "main": "src/index.ts",
   "author": "lightyears <lightyears1998@hotmail.com>",
   "license": "(MulanPSL-2.0 OR BSD-3-Clause)",
+  "engines": {
+    "node": ">=15"
+  },
   "scripts": {
     "start": "ts-node src/index.ts",
     "dev": "cross-env NODE_ENV=development DEBUG=* ts-node-dev --respawn --transpile-only --expose-gc -- src/index.ts",
-    "prod": "pm2 start bin/index.js --name acycle",
     "build": "tsc -p tsconfig.json",
     "lint": "eslint .",
     "typeorm": "node --require ts-node/register ./node_modules/typeorm/cli.js"

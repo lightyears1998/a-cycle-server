@@ -181,8 +181,12 @@ const syncModeRecentRequestMessageHandler: MessageHandler = async (
   socket,
   message: SyncModeRecentRequestMessage
 ) => {
+  const { userId } = socket.authState;
   const { historyCursor } = (message as SyncModeRecentRequestMessage).payload;
-  const history = await historyService.locateHistoryCursor(historyCursor);
+  const history = await historyService.locateHistoryCursorOfUser(
+    historyCursor,
+    userId
+  );
   if (!history) {
     // Broken history cursor, which indicates client to fall back to full sync.
     socket.replyMessage(

@@ -5,7 +5,7 @@
 node_modules
 
 # Compiled Files
-lib
+bin
 
 # IDE
 .vscode/**

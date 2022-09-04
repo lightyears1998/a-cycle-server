@@ -77,13 +77,16 @@ export class HistoryService {
     this.processQueue();
   }
 
-  async locateHistoryCursor(
-    unverifiedHistoryCursor: Partial<EntryHistory>
+  async locateHistoryCursorOfUser(
+    unverifiedHistoryCursor: Partial<EntryHistory>,
+    userId: string
   ): Promise<EntryHistory | null> {
     const cursor = await this.manager.findOne(EntryHistory, {
       where: {
-        user: Object(unverifiedHistoryCursor.user),
-        id: Number(unverifiedHistoryCursor.id),
+        user: {
+          id: userId,
+        },
+        id: String(unverifiedHistoryCursor.id),
         entryId: String(unverifiedHistoryCursor.entryId),
         entryUpdatedAt: new Date(
           String(unverifiedHistoryCursor.entryUpdatedAt)

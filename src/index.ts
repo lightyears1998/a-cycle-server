@@ -76,8 +76,7 @@ async function setupWebsocketEndpoint() {
 async function bootstrap() {
   await setupEnvironmentVariables();
   await setupDatabase();
-  await setupRestfulEndpoint();
-  await setupWebsocketEndpoint();
+  await Promise.all([setupRestfulEndpoint(), setupWebsocketEndpoint()]);
   console.log(`Server instance ${Container.get(SERVER_UUID)} is operating.`);
 
   checkGcInDevelopment(

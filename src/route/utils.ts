@@ -1,6 +1,7 @@
 import Router from "koa-router";
 import { randomUUID, createHash } from "crypto";
 import { BadParameterError } from "../error";
+import moment from "moment";
 
 const router = new Router();
 
@@ -29,8 +30,10 @@ router.get("/sha256", (ctx) => {
 });
 
 router.get("/timestamp", (ctx) => {
+  const date = new Date();
   ctx.body = {
-    timestamp: new Date().toISOString(),
+    timestamp: date.toISOString(),
+    unix: moment(date).unix(),
   };
 });
 

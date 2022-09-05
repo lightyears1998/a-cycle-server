@@ -8,6 +8,7 @@ import { timestampCheckMiddleware } from "./middleware/timestamp-check";
 import usersRouter from "./users";
 import adminRouter from "./admin";
 import utilsRouter from "./utils";
+import backupsRouter from "./backups";
 
 class Route {
   path: string;
@@ -32,6 +33,7 @@ export function setupRouter(router: Router) {
     new Route("/users", usersRouter),
     new Route("/admin", adminRouter),
     new Route("/utils", utilsRouter),
+    new Route("/backups", backupsRouter),
   ];
 
   for (const route of routes) {

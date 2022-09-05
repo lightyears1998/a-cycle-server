@@ -1,7 +1,6 @@
 import { Inject, Service } from "typedi";
 import { EntityManager, IsNull } from "typeorm";
 import { User } from "../entity/user";
-import { BadParameterError } from "../error";
 
 @Service()
 export class UserService {

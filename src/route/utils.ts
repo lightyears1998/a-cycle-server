@@ -2,12 +2,28 @@ import Router from "koa-router";
 import { randomUUID, createHash } from "crypto";
 import { BadParameterError } from "../error";
 import moment from "moment";
+import { validate as UuidValidate, version as UuidVersion } from "uuid";
 
 const router = new Router();
 
-router.get("/random-uuid", (ctx) => {
+router.get("/uuid", (ctx) => {
   ctx.body = {
-    uuid: randomUUID(),
+    randomUuid: randomUUID(),
+  };
+});
+
+router.get("/uuid/:uuidToVerified", (ctx) => {
+  const { uuidToVerified } = ctx.params;
+
+  const isValid = UuidValidate(uuidToVerified);
+  let version: number | undefined = undefined;
+  if (isValid) {
+    version = UuidVersion(uuidToVerified);
+  }
+
+  ctx.body = {
+    isValid,
+    version,
   };
 });
 

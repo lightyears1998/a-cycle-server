@@ -18,14 +18,14 @@ export class Entry implements SoftDeletableObject {
   @ManyToOne(() => User, { nullable: false })
   user?: User;
 
+  @Column({ type: "timestamptz", nullable: true })
+  removedAt!: Date | null;
+
   @Column({ nullable: false })
   contentType!: string;
 
   @Column({ type: "jsonb", default: "null" })
   content!: JsonValue;
-
-  @Column({ type: "timestamptz", nullable: true })
-  removedAt!: Date | null;
 
   @Column({
     type: "timestamptz",

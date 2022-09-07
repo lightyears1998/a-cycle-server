@@ -16,14 +16,14 @@ export class User implements SoftDeletableObject {
   @PrimaryGeneratedColumn("increment", { type: "int8" })
   id!: string;
 
+  @Column({ type: "timestamptz", nullable: true })
+  removedAt!: Date | null;
+
   @Column()
   username!: string;
 
   @Column()
   passwordHash!: string;
-
-  @Column({ type: "timestamptz", nullable: true })
-  removedAt!: Date | null;
 
   @CreateDateColumn()
   createdAt!: Date;

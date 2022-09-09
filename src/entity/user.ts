@@ -6,13 +6,13 @@ import {
   Unique,
   UpdateDateColumn,
 } from "typeorm";
-import { SoftDeletableObject } from "./interface/soft-deletable-object";
+import { SoftRemovableObject } from "./interface/soft-removable-object";
 
 export type PlainUser = Pick<User, "id" | "username">;
 
 @Entity()
 @Unique("UNIQUE_USERNAME", ["username"])
-export class User implements SoftDeletableObject {
+export class User implements SoftRemovableObject {
   @PrimaryGeneratedColumn("increment", { type: "int8" })
   id!: string;
 

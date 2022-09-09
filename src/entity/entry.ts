@@ -1,6 +1,6 @@
 import type { JsonValue } from "type-fest";
 import { Column, Entity, ManyToOne, PrimaryGeneratedColumn } from "typeorm";
-import { SoftDeletableObject } from "./interface/soft-deletable-object";
+import { SoftRemovableObject } from "./interface/soft-removable-object";
 import { User } from "./user";
 
 export type PlainEntry = Omit<Entry, "user" | "toPlain" | "getMetadata">;
@@ -11,7 +11,7 @@ export type EntryMetadata = Pick<
 >;
 
 @Entity()
-export class Entry implements SoftDeletableObject {
+export class Entry implements SoftRemovableObject {
   @PrimaryGeneratedColumn("uuid")
   uuid!: string;
 

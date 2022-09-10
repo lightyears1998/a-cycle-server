@@ -53,4 +53,15 @@ router.get("/timestamp", (ctx) => {
   };
 });
 
+router.get("/slow-response/:timeout", async (ctx) => {
+  const { timeout } = ctx.params;
+  let timeoutSeconds = Number(timeout);
+  timeoutSeconds = Math.min(60, Math.max(0, timeoutSeconds));
+
+  await new Promise<void>((resolve) => {
+    setTimeout(resolve, timeoutSeconds * 1000);
+  });
+  ctx.body = {};
+});
+
 export default router;

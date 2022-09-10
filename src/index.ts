@@ -47,7 +47,11 @@ async function setupRestfulEndpoint() {
   return new Promise<void>((resolve) => {
     httpServer.listen(port, host, () => {
       resolve();
-      logger(`RESTful HTTP server is listening at http://${host}:${port}.`);
+      logger(
+        `RESTful HTTP server is operating at http://${host}:${port}${Container.get(
+          SERVER_ENDPOINT_PREFIX
+        )}.`
+      );
     });
   });
 }
@@ -67,7 +71,9 @@ async function setupWebsocketEndpoint() {
       async () => {
         (await import("./socket")).setupWebsocketServer(websocketServer);
         resolve();
-        logger(`Websocket server is listening at http://${host}:${port}.`);
+        logger(
+          `Websocket server is operating at http://${host}:${port}${path}.`
+        );
       }
     );
   });

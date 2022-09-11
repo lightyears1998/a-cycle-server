@@ -53,33 +53,23 @@ export class GoodbyeMessage extends Message {
 export class SyncModeRecentRequestMessage extends Message {
   type = "sync-recent-request";
   payload = {
-    historyCursor: {} as HistoryCursor,
+    historyCursor: {} as HistoryCursor | null,
   };
 
-  constructor({
-    id,
-    entryUuid,
-    entryUpdatedAt,
-    entryUpdatedBy,
-  }: HistoryCursor) {
+  constructor(cursor: HistoryCursor | null) {
     super();
-    this.payload.historyCursor = {
-      id,
-      entryUuid,
-      entryUpdatedAt,
-      entryUpdatedBy,
-    };
+    this.payload.historyCursor = cursor;
   }
 }
 
 export class SyncModeRecentResponseMessage extends Message {
   type = "sync-recent-response";
   payload = {
-    historyCursor: {} as HistoryCursor,
+    historyCursor: {} as HistoryCursor | null,
     entries: [] as PlainEntry[],
   };
 
-  constructor(historyCursor: HistoryCursor, entries: PlainEntry[]) {
+  constructor(historyCursor: HistoryCursor | null, entries: PlainEntry[]) {
     super();
     this.payload.historyCursor = historyCursor;
     this.payload.entries = entries;

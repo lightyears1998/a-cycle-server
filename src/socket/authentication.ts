@@ -73,7 +73,7 @@ function doHandshake(
     return false;
   }
 
-  const nodeUuid = String(request.headers["a-cycle-client-uuid"]);
+  const nodeUuid = String(request.headers["a-cycle-peer-node-uuid"]);
   if (!uuidValidate(nodeUuid) || !(uuidVersion(nodeUuid) === 4)) {
     socket.sendMessage(new HandshakeMessage([new BadNodeIdError()]));
     return false;

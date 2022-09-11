@@ -56,11 +56,16 @@ export class SyncModeRecentRequestMessage extends Message {
     historyCursor: {} as HistoryCursor,
   };
 
-  constructor({ id, entryId, entryUpdatedAt, entryUpdatedBy }: HistoryCursor) {
+  constructor({
+    id,
+    entryUuid,
+    entryUpdatedAt,
+    entryUpdatedBy,
+  }: HistoryCursor) {
     super();
     this.payload.historyCursor = {
       id,
-      entryId,
+      entryUuid,
       entryUpdatedAt,
       entryUpdatedBy,
     };

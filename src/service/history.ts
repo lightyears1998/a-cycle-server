@@ -68,7 +68,7 @@ export class HistoryService {
     const unwrittenHistory = this.manager.create(EntryHistory, {
       user: entry.user,
       entryOperation: operation,
-      entryId: entry.uuid,
+      entryUuid: entry.uuid,
       entryUpdatedAt: entry.updatedAt,
       entryUpdatedBy: entry.updatedBy,
     }) as UnwrittenHistory;
@@ -87,7 +87,7 @@ export class HistoryService {
           id: userId,
         },
         id: String(unverifiedHistoryCursor.id),
-        entryId: String(unverifiedHistoryCursor.entryId),
+        entryUuid: String(unverifiedHistoryCursor.entryUuid),
         entryUpdatedAt: new Date(
           String(unverifiedHistoryCursor.entryUpdatedAt)
         ),

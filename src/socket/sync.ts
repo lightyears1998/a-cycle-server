@@ -210,7 +210,7 @@ const syncModeRecentRequestMessageHandler: MessageHandler = async (
 
   const entries = await manager.find(Entry, {
     where: {
-      uuid: In(histories.map((history) => history.entryId)),
+      uuid: In(histories.map((history) => history.entryUuid)),
     },
   });
   const plainEntries = entries.map((entry) => entry.toPlain());

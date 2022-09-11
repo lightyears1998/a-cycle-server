@@ -14,13 +14,16 @@ export type PlainEntryHistory = Omit<
 
 export class HistoryCursor
   implements
-    Pick<EntryHistory, "id" | "entryId" | "entryUpdatedAt" | "entryUpdatedBy">
+    Pick<
+      EntryHistory,
+      "id" | "entryUuid" | "entryUpdatedAt" | "entryUpdatedBy"
+    >
 {
   @IsNumber()
   id!: string;
 
   @IsString()
-  entryId!: string;
+  entryUuid!: string;
 
   @IsDate()
   entryUpdatedAt!: Date;
@@ -30,7 +33,7 @@ export class HistoryCursor
 
   constructor(id: string, entryId: string, at: Date, by: string) {
     this.id = id;
-    this.entryId = entryId;
+    this.entryUuid = entryId;
     this.entryUpdatedAt = at;
     this.entryUpdatedBy = by;
   }
@@ -48,7 +51,7 @@ export class EntryHistory {
   user!: User;
 
   @Column({ type: "uuid" })
-  entryId!: string;
+  entryUuid!: string;
 
   @Column({
     type: "enum",
@@ -66,7 +69,7 @@ export class EntryHistory {
     return {
       id: this.id,
       parentId: this.parentId,
-      entryId: this.entryId,
+      entryUuid: this.entryUuid,
       entryOperation: this.entryOperation,
       entryUpdatedAt: this.entryUpdatedAt,
       entryUpdatedBy: this.entryUpdatedBy,
@@ -76,7 +79,7 @@ export class EntryHistory {
   toCursor() {
     return new HistoryCursor(
       this.id,
-      this.entryId,
+      this.entryUuid,
       this.entryUpdatedAt,
       this.entryUpdatedBy
     );

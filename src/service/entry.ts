@@ -2,6 +2,7 @@ import { Inject, Service } from "typedi";
 import { EntityManager, In, IsNull } from "typeorm";
 import { Entry, EntryMetadata, PlainEntry } from "../entity/entry";
 import { EntryOperation } from "../entity/entry-history";
+import { User } from "../entity/user";
 import { HistoryService } from "./history";
 
 @Service()
@@ -16,8 +17,8 @@ export class EntryService {
     entry: Partial<Entry>,
     operation: EntryOperation
   ): Promise<Entry> {
+    await this.historyService.commitEntryOperation(entry as Entry, operation);
     const savedEntry = await this.manager.save(Entry, entry);
-    this.historyService.commitEntryOperation(entry as Entry, operation);
     return savedEntry;
   }
 
@@ -64,7 +65,7 @@ export class EntryService {
     return this.saveEntry(entry, EntryOperation.UPDATE);
   }
 
-  async updateEntryIfFresher(userId: string, entry: PlainEntry) {
+  async saveEntryIfNewOrFresher(userId: string, entry: PlainEntry) {
     const oldEntry = await this.manager.findOne(Entry, {
       where: {
         user: {
@@ -73,13 +74,22 @@ export class EntryService {
         uuid: entry.uuid,
       },
     });
+
+    let shouldSave = false;
     if (!oldEntry) {
-      return;
+      shouldSave = true;
+    } else {
+      shouldSave = this.isFresher(entry, oldEntry);
     }
 
-    if (this.isFresher(entry, oldEntry)) {
+    if (shouldSave) {
       return this.updateEntry(
-        this.manager.create(Entry, Object.assign({}, oldEntry, entry))
+        this.manager.create(
+          Entry,
+          Object.assign({}, oldEntry, entry, {
+            user: { id: userId },
+          } as Partial<User>)
+        )
       );
     }
   }

@@ -1,23 +1,24 @@
-import { Message, ControlMessage } from "./message";
+import { Message, ControlMessage, SessionId } from "./message";
 import { WebSocket } from "ws";
 import { BadParameterError } from "../error";
 
 export type MessageStreamingWebsocket = WebSocket & {
-  sendMessage: (message: Message) => void;
-  replyMessage: (request: Message, response: Message) => void;
+  sendMessage: (message: Message) => SessionId;
+  replyMessage: (request: Message, response: Message) => SessionId;
   replyUnrecognizedMessage: (message: Message) => void;
 };
 
 function sendMessage(this: WebSocket, message: Message) {
-  const response = Object.assign({}, message);
-  for (let i = 0; i < response.errors.length; ++i) {
-    response.errors[i] = {
-      name: response.errors[i].constructor.name,
-      message: response.errors[i].message,
+  const outgoingMessage = Object.assign({}, message);
+  for (let i = 0; i < message.errors.length; ++i) {
+    outgoingMessage.errors[i] = {
+      name: message.errors[i].constructor.name,
+      message: message.errors[i].message,
     };
   }
 
-  this.send(JSON.stringify(response));
+  this.send(JSON.stringify(outgoingMessage));
+  return outgoingMessage.session;
 }
 
 function replyMessage(
@@ -26,7 +27,7 @@ function replyMessage(
   response: Message
 ) {
   response.session = request.session;
-  this.sendMessage(response);
+  return this.sendMessage(response);
 }
 
 function replyUnrecognizedMessage(

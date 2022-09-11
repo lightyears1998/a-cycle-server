@@ -4,8 +4,10 @@ import { EntryMetadata, PlainEntry } from "../entity/entry";
 import { HistoryCursor } from "../entity/entry-history";
 import { ServerError } from "../error";
 
+export type SessionId = string;
+
 export abstract class Message {
-  session: string = randomUUID();
+  session: SessionId = randomUUID();
   type!: string;
   errors: Array<ServerError> = [];
   payload: unknown = {};

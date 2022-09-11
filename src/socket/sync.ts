@@ -182,17 +182,27 @@ const syncModeRecentRequestMessageHandler: MessageHandler = async (
   message: SyncModeRecentRequestMessage
 ) => {
   const { userId } = socket.authState;
-  const { historyCursor } = (message as SyncModeRecentRequestMessage).payload;
+  const { historyCursor } = message.payload;
+
+  const rejectInvalidCursor = () => {
+    const errorMessage = new SyncModeRecentResponseMessage(null, []);
+    errorMessage.errors.push(new HistoryCursorInvalidError());
+    socket.replyMessage(message, errorMessage);
+  };
+
+  if (!historyCursor) {
+    // Invalid history cursor
+    rejectInvalidCursor();
+    return;
+  }
+
   const history = await historyService.locateHistoryCursorOfUser(
     historyCursor,
     userId
   );
   if (!history) {
     // Broken history cursor, which indicates client to fall back to full sync.
-    socket.replyMessage(
-      message,
-      new ControlMessage([new HistoryCursorInvalidError()])
-    );
+    rejectInvalidCursor();
     return;
   }
 
@@ -241,12 +251,19 @@ const syncModeRecentResponseMessageHandler: MessageHandler = async (
 
   const { historyCursor, entries } = message.payload;
 
+  if (historyCursor) {
+    await nodeService.updateClientHistoryCursor(
+      userId,
+      nodeUuid,
+      historyCursor
+    );
+  }
+
   await Promise.allSettled(
     entries.map((entry) => {
-      return entryService.updateEntryIfFresher(userId, entry);
+      return entryService.saveEntryIfNewOrFresher(userId, entry);
     })
   );
-  await nodeService.updateClientHistoryCursor(userId, nodeUuid, historyCursor);
 
   if (entries.length === 0) {
     // If `entries` are empty, we must reach the end of history and sync-recent has completed.
@@ -292,17 +309,20 @@ const syncModeFullMetaResponseMessageHandler: MessageHandler = async (
 ) => {
   const { skip, currentCursor, entryMetadata } = message.payload;
 
-  if (skip === 0 && currentCursor) {
-    socket.syncState.c2s["cursor-when-sync-full-started"] = currentCursor;
-  }
-
-  if (!socket.syncState.c2s["cursor-when-sync-full-started"] && currentCursor) {
-    socket.syncState.c2s["cursor-when-sync-full-started"] = currentCursor;
+  if (currentCursor) {
+    if (skip === 0 || !socket.syncState.c2s["cursor-when-sync-full-started"]) {
+      socket.syncState.c2s["cursor-when-sync-full-started"] = currentCursor;
+    }
   }
 
   if (entryMetadata.length === 0) {
     return;
   }
+
+  socket.sendMessage(
+    new SyncModeFullMetaQueryMessage(skip + entryMetadata.length)
+  );
+  socket.syncState.s2c["sync-full-meta-query-count"]++;
 
   const fresherEntryMetadata = await entryService.filterFresherEntryMetadata(
     entryMetadata
@@ -350,7 +370,7 @@ const syncModeFullEntriesResponseMessageHandler: MessageHandler = async (
   socket.syncState.c2s["sync-full-entries-response-count"]++;
 
   await Promise.allSettled(
-    entries.map((entry) => entryService.updateEntryIfFresher(userId, entry))
+    entries.map((entry) => entryService.saveEntryIfNewOrFresher(userId, entry))
   );
 
   return;

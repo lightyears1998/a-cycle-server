@@ -34,6 +34,8 @@ const nodeService = Container.get(NodeService);
 class SyncState {
   processingMessageCount = 0;
 
+  hasSyncBegun = false;
+
   sent = {
     "sync-full-meta-query-count": 0,
     "sync-full-entries-query-count": 0,
@@ -173,6 +175,8 @@ async function initSyncFromPeerNode(socket: SyncingWebSocket) {
       ]} [${session}].`
     );
   }
+
+  socket.syncState.hasSyncBegun = true;
 }
 
 export async function syncEntriesViaSocket(socket: AuthenticatedWebSocket) {
@@ -557,6 +561,7 @@ export async function doSync(socket: SyncingWebSocket) {
 
     // If we are not syncing anything from client, then say goodbye to client.
     if (
+      socket.syncState.hasSyncBegun &&
       socket.syncState.processingMessageCount === 0 &&
       !socket.syncState.syncRecentOngoing() &&
       !socket.syncState.syncFullOngoing() &&

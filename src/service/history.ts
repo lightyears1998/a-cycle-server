@@ -121,6 +121,15 @@ export class HistoryService {
     unverifiedHistoryCursor: Partial<EntryHistory>,
     userId: string
   ): Promise<EntryHistory | null> {
+    if (
+      !unverifiedHistoryCursor.id ||
+      !unverifiedHistoryCursor.entryUuid ||
+      !unverifiedHistoryCursor.entryUpdatedAt ||
+      !unverifiedHistoryCursor.entryUpdatedBy
+    ) {
+      return null;
+    }
+
     const cursor = await this.manager.findOne(EntryHistory, {
       where: {
         user: {

@@ -34,45 +34,45 @@ const nodeService = Container.get(NodeService);
 class SyncState {
   processingMessageCount = 0;
 
-  s2c = {
+  sent = {
     "sync-full-meta-query-count": 0,
     "sync-full-entries-query-count": 0,
     "sync-recent-request-count": 0,
-    "said-goodbye": false,
+    goodbye: false,
   };
 
-  c2s = {
+  received = {
     "sync-full-meta-response-count": 0,
     "sync-full-entries-response-count": 0,
     "sync-full-entries-response-first-cursor": null as HistoryCursor | null,
     "sync-recent-response-count": 0,
-    "said-goodbye": false,
+    goodbye: false,
   };
 
   syncRecentOngoing = (): boolean => {
     return (
-      this.s2c["sync-recent-request-count"] >
-      this.c2s["sync-recent-response-count"]
+      this.sent["sync-recent-request-count"] >
+      this.received["sync-recent-response-count"]
     );
   };
 
   syncFullOngoing = (): boolean => {
     return (
-      this.s2c["sync-full-meta-query-count"] > 0 &&
-      (this.s2c["sync-full-meta-query-count"] >
-        this.c2s["sync-full-meta-response-count"] ||
-        this.s2c["sync-full-entries-query-count"] >
-          this.c2s["sync-full-entries-response-count"])
+      this.sent["sync-full-meta-query-count"] > 0 &&
+      (this.sent["sync-full-meta-query-count"] >
+        this.received["sync-full-meta-response-count"] ||
+        this.sent["sync-full-entries-query-count"] >
+          this.received["sync-full-entries-response-count"])
     );
   };
 
   syncFullSucceed = (): boolean => {
     return (
-      this.s2c["sync-full-meta-query-count"] >= 0 &&
-      this.s2c["sync-full-meta-query-count"] <=
-        this.c2s["sync-full-meta-response-count"] &&
-      this.s2c["sync-full-entries-query-count"] <=
-        this.c2s["sync-full-entries-response-count"]
+      this.sent["sync-full-meta-query-count"] >= 0 &&
+      this.sent["sync-full-meta-query-count"] <=
+        this.received["sync-full-meta-response-count"] &&
+      this.sent["sync-full-entries-query-count"] <=
+        this.received["sync-full-entries-response-count"]
     );
   };
 }
@@ -145,7 +145,7 @@ async function initClient2ServerSync(socket: SyncingWebSocket) {
       new SyncModeRecentRequestMessage(node.historyCursor)
     );
     socket.log(
-      `Sending SyncModeRecentRequestMessage #${++socket.syncState.s2c[
+      `Sending SyncModeRecentRequestMessage #${++socket.syncState.sent[
         "sync-recent-request-count"
       ]} [${session}].`
     );
@@ -164,7 +164,7 @@ async function initClient2ServerSync(socket: SyncingWebSocket) {
 
     const session = socket.sendMessage(new SyncModeFullMetaQueryMessage(0));
     socket.log(
-      `Sending SyncModeFullMetaQueryMessage #${++socket.syncState.s2c[
+      `Sending SyncModeFullMetaQueryMessage #${++socket.syncState.sent[
         "sync-full-meta-query-count"
       ]} [${session}].`
     );
@@ -202,7 +202,7 @@ const goodbyeMessageHandler: MessageHandler = async (
   socket,
   _message: GoodbyeMessage
 ) => {
-  socket.syncState.c2s["said-goodbye"] = true;
+  socket.syncState.received["goodbye"] = true;
   socket.log("Receiving goodbye message from client.");
 };
 
@@ -273,7 +273,7 @@ const syncModeRecentResponseMessageHandler: MessageHandler = async (
   const { userId, nodeUuid } = socket.authState;
 
   socket.log(
-    `Receiving SyncModeRecentResponseMessage #${++socket.syncState.c2s[
+    `Receiving SyncModeRecentResponseMessage #${++socket.syncState.received[
       "sync-recent-response-count"
     ]} [${session}].`
   );
@@ -288,7 +288,7 @@ const syncModeRecentResponseMessageHandler: MessageHandler = async (
 
     const session = socket.sendMessage(new SyncModeFullMetaQueryMessage(0));
     socket.log(
-      `Sending SyncModeFullMetaQueryMessage #${++socket.syncState.s2c[
+      `Sending SyncModeFullMetaQueryMessage #${++socket.syncState.sent[
         "sync-full-meta-query-count"
       ]} [${session}].`
     );
@@ -322,7 +322,7 @@ const syncModeRecentResponseMessageHandler: MessageHandler = async (
       new SyncModeRecentRequestMessage(historyCursor)
     );
     socket.log(
-      `Sending SyncModeRecentRequestMessage #${++socket.syncState.s2c[
+      `Sending SyncModeRecentRequestMessage #${++socket.syncState.sent[
         "sync-recent-request-count"
       ]} [${session}].`
     );
@@ -366,7 +366,7 @@ const syncModeFullMetaResponseMessageHandler: MessageHandler = async (
   const { skip, currentCursor, entryMetadata } = message.payload;
 
   socket.log(
-    `Receiving SyncModeFullMetaResponseMessage #${++socket.syncState.c2s[
+    `Receiving SyncModeFullMetaResponseMessage #${++socket.syncState.received[
       "sync-full-meta-response-count"
     ]} [${session}].`
   );
@@ -374,9 +374,9 @@ const syncModeFullMetaResponseMessageHandler: MessageHandler = async (
   if (currentCursor) {
     if (
       skip === 0 ||
-      !socket.syncState.c2s["sync-full-entries-response-first-cursor"]
+      !socket.syncState.received["sync-full-entries-response-first-cursor"]
     ) {
-      socket.syncState.c2s["sync-full-entries-response-first-cursor"] =
+      socket.syncState.received["sync-full-entries-response-first-cursor"] =
         currentCursor;
       socket.log(
         "Updating cursor from received SyncModeFullMetaResponseMessage."
@@ -393,7 +393,7 @@ const syncModeFullMetaResponseMessageHandler: MessageHandler = async (
     new SyncModeFullMetaQueryMessage(skip + entryMetadata.length)
   );
   socket.log(
-    `Sending SyncModeFullMetaQueryMessage #${++socket.syncState.s2c[
+    `Sending SyncModeFullMetaQueryMessage #${++socket.syncState.sent[
       "sync-full-meta-query-count"
     ]} [${metaQueryMessageSession}].`
   );
@@ -407,7 +407,7 @@ const syncModeFullMetaResponseMessageHandler: MessageHandler = async (
     )
   );
   socket.log(
-    `Sending SyncModeFullEntriesQueryMessage #${++socket.syncState.s2c[
+    `Sending SyncModeFullEntriesQueryMessage #${++socket.syncState.sent[
       "sync-full-entries-query-count"
     ]} [${entriesQuerySession}].`
   );
@@ -449,9 +449,8 @@ const syncModeFullEntriesResponseMessageHandler: MessageHandler = async (
   const { entries } = message.payload;
 
   socket.log(
-    `Receiving SyncModeFullEntriesResponseMessage #${++socket.syncState.c2s[
-      "sync-full-entries-response-count"
-    ]} [${session}].`
+    `Receiving SyncModeFullEntriesResponseMessage #${++socket.syncState
+      .received["sync-full-entries-response-count"]} [${session}].`
   );
 
   await Promise.allSettled(
@@ -491,12 +490,12 @@ async function cleanUpAfterSyncFull(socket: SyncingWebSocket) {
   // update cursor so that next sync could be accelerated.
   if (
     socket.syncState.syncFullSucceed() &&
-    socket.syncState.c2s["sync-full-entries-response-first-cursor"]
+    socket.syncState.received["sync-full-entries-response-first-cursor"]
   ) {
     await nodeService.updateClientHistoryCursor(
       userId,
       nodeUuid,
-      socket.syncState.c2s["sync-full-entries-response-first-cursor"]
+      socket.syncState.received["sync-full-entries-response-first-cursor"]
     );
     socket.log("Sync full succeed and cursor is updated.");
   } else {
@@ -553,10 +552,10 @@ export async function doSync(socket: SyncingWebSocket) {
       socket.syncState.processingMessageCount === 0 &&
       !socket.syncState.syncRecentOngoing() &&
       !socket.syncState.syncFullOngoing() &&
-      !socket.syncState.s2c["said-goodbye"]
+      !socket.syncState.sent["goodbye"]
     ) {
       socket.sendMessage(new GoodbyeMessage());
-      socket.syncState.s2c["said-goodbye"] = true;
+      socket.syncState.sent["goodbye"] = true;
       cleanUpAfterSyncFull(socket);
       socket.log(
         "We are not syncing anything from client, and it's time to say goodbye."
@@ -566,8 +565,8 @@ export async function doSync(socket: SyncingWebSocket) {
     // If both client and server have said goodbye, disconnect and cleanup.
     if (
       socket.syncState.processingMessageCount === 0 &&
-      socket.syncState.c2s["said-goodbye"] &&
-      socket.syncState.s2c["said-goodbye"]
+      socket.syncState.received["goodbye"] &&
+      socket.syncState.sent["goodbye"]
     ) {
       socket.close();
       socket.log("Two-way synchronization finished.");

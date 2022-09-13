@@ -51,18 +51,18 @@ class SyncState {
     goodbye: false,
   };
 
-  syncRecentOngoing = (): boolean => {
+  isSyncRecentOngoing = (): boolean => {
     return (
       this.sent["sync-recent-request-count"] >
       this.received["sync-recent-response-count"]
     );
   };
 
-  syncFullExecute = (): boolean => {
+  isSyncFullExecuted = (): boolean => {
     return this.sent["sync-full-meta-query-count"] > 0;
   };
 
-  syncFullOngoing = (): boolean => {
+  isSyncFullOngoing = (): boolean => {
     return (
       this.sent["sync-full-meta-query-count"] > 0 &&
       (this.sent["sync-full-meta-query-count"] >
@@ -72,9 +72,9 @@ class SyncState {
     );
   };
 
-  syncFullSucceed = (): boolean => {
+  isSyncFullSucceed = (): boolean => {
     return (
-      this.sent["sync-full-meta-query-count"] >= 0 &&
+      this.sent["sync-full-meta-query-count"] > 0 &&
       this.sent["sync-full-meta-query-count"] <=
         this.received["sync-full-meta-response-count"] &&
       this.sent["sync-full-entries-query-count"] <=
@@ -500,9 +500,9 @@ async function cleanUpAfterSyncFull(socket: SyncingWebSocket) {
 
   // If a sync-full has completed successfully,
   // update cursor so that next sync could be accelerated.
-  if (socket.syncState.syncFullExecute()) {
+  if (socket.syncState.isSyncFullExecuted()) {
     if (
-      socket.syncState.syncFullSucceed() &&
+      socket.syncState.isSyncFullSucceed() &&
       socket.syncState.received["sync-full-entries-response-first-cursor"]
     ) {
       await nodeService.updateClientHistoryCursor(
@@ -563,8 +563,8 @@ export async function doSync(socket: SyncingWebSocket) {
     if (
       socket.syncState.hasSyncBegun &&
       socket.syncState.processingMessageCount === 0 &&
-      !socket.syncState.syncRecentOngoing() &&
-      !socket.syncState.syncFullOngoing() &&
+      !socket.syncState.isSyncRecentOngoing() &&
+      !socket.syncState.isSyncFullOngoing() &&
       !socket.syncState.sent["goodbye"]
     ) {
       socket.sendMessage(new GoodbyeMessage());

@@ -56,6 +56,10 @@ class SyncState {
     );
   };
 
+  syncFullExecute = (): boolean => {
+    return this.sent["sync-full-meta-query-count"] > 0;
+  };
+
   syncFullOngoing = (): boolean => {
     return (
       this.sent["sync-full-meta-query-count"] > 0 &&
@@ -128,11 +132,11 @@ function parseMessage(socket: SyncingWebSocket, data: RawData): Message | null {
   return message;
 }
 
-/** Request entries synchronization from client to server */
-async function initClient2ServerSync(socket: SyncingWebSocket) {
+/** Sync entries from peer node, ie. client to server. */
+async function initSyncFromPeerNode(socket: SyncingWebSocket) {
   const { userId, nodeUuid } = socket.authState;
 
-  socket.log("Initializing synchronization from client to server.");
+  socket.log("Initializing synchronization from peer node.");
 
   socket.log("Looking up for node sync record.");
   const node = await manager.findOne(Node, {
@@ -249,13 +253,17 @@ const syncModeRecentRequestMessageHandler: MessageHandler = async (
     },
     take: TRANSMISSION_PAGING_SIZE,
   });
-  const nextHistroyCursor = histories[histories.length - 1];
+  const nextHistroyCursor =
+    histories.length > 0 ? histories[histories.length - 1] : historyCursor;
 
-  const entries = await manager.find(Entry, {
-    where: {
-      uuid: In(histories.map((history) => history.entryUuid)),
-    },
-  });
+  const entries =
+    histories.length > 0
+      ? await manager.find(Entry, {
+          where: {
+            uuid: In(histories.map((history) => history.entryUuid)),
+          },
+        })
+      : [];
   const plainEntries = entries.map((entry) => entry.toPlain());
 
   socket.replyMessage(
@@ -488,26 +496,26 @@ async function cleanUpAfterSyncFull(socket: SyncingWebSocket) {
 
   // If a sync-full has completed successfully,
   // update cursor so that next sync could be accelerated.
-  if (
-    socket.syncState.syncFullSucceed() &&
-    socket.syncState.received["sync-full-entries-response-first-cursor"]
-  ) {
-    await nodeService.updateClientHistoryCursor(
-      userId,
-      nodeUuid,
+  if (socket.syncState.syncFullExecute()) {
+    if (
+      socket.syncState.syncFullSucceed() &&
       socket.syncState.received["sync-full-entries-response-first-cursor"]
-    );
-    socket.log("Sync full succeed and cursor is updated.");
-  } else {
-    socket.log(
-      "Sync full has failed or no cursor was submitted by client, and hence no cursor is updated."
-    );
+    ) {
+      await nodeService.updateClientHistoryCursor(
+        userId,
+        nodeUuid,
+        socket.syncState.received["sync-full-entries-response-first-cursor"]
+      );
+      socket.log("Sync full succeed and cursor is updated.");
+    } else {
+      socket.log(
+        "Sync full has failed or no cursor was submitted by client, and hence no cursor is updated."
+      );
+    }
   }
 }
 
 export async function doSync(socket: SyncingWebSocket) {
-  initClient2ServerSync(socket);
-
   const { handlers } = socket;
 
   const type2Handlers = [
@@ -547,7 +555,7 @@ export async function doSync(socket: SyncingWebSocket) {
       socket.log(`Unable to recognize client message type: ${message.type}.`);
     }
 
-    // If we are not syncing anything from client, then say goodbye to client
+    // If we are not syncing anything from client, then say goodbye to client.
     if (
       socket.syncState.processingMessageCount === 0 &&
       !socket.syncState.syncRecentOngoing() &&
@@ -574,4 +582,6 @@ export async function doSync(socket: SyncingWebSocket) {
       checkGcInDevelopment(socket);
     }
   });
+
+  await initSyncFromPeerNode(socket);
 }

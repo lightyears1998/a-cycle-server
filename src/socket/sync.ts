@@ -581,7 +581,7 @@ export async function doSync(socket: SyncingWebSocket) {
       socket.close();
       socket.log("Two-way synchronization finished.");
 
-      checkGcInDevelopment(socket);
+      setTimeout(() => checkGcInDevelopment(socket), 10000);
     }
   });
 

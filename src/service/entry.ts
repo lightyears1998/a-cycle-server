@@ -45,11 +45,7 @@ export class EntryService {
       return true;
     }
 
-    return (
-      newEntry.updatedAt > oldEntry.updatedAt ||
-      (newEntry.updatedAt === oldEntry.updatedAt &&
-        newEntry.updatedBy > oldEntry.updatedBy)
-    );
+    return new Date(newEntry.updatedAt) > new Date(oldEntry.updatedAt);
   }
 
   async createEntry(entry: Partial<Entry>): Promise<Entry> {

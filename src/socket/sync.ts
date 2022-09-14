@@ -572,7 +572,7 @@ export async function doSync(socket: SyncingWebSocket) {
       );
     }
 
-    // If both client and server have said goodbye, disconnect and cleanup.
+    // If both client and server have said goodbye, then disconnect.
     if (
       socket.syncState.processingMessageCount === 0 &&
       socket.syncState.received["goodbye"] &&

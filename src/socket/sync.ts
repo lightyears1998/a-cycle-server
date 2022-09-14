@@ -384,10 +384,7 @@ const syncModeFullMetaResponseMessageHandler: MessageHandler = async (
   );
 
   if (currentCursor) {
-    if (
-      skip === 0 ||
-      !socket.syncState.received["sync-full-entries-response-first-cursor"]
-    ) {
+    if (!socket.syncState.received["sync-full-entries-response-first-cursor"]) {
       socket.syncState.received["sync-full-entries-response-first-cursor"] =
         currentCursor;
       socket.log(

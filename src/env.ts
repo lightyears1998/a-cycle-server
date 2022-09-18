@@ -28,6 +28,9 @@ export const USER_REGISTRATION_ENABLED = new Token<boolean>(
   "USER_REGISTRATION_ENABLED"
 );
 
+export const DATABASE_TYPE = new Token<string>("DATABASE_TYPE");
+Container.set(DATABASE_TYPE, process.env.DATABASE_TYPE || "postgres");
+
 export const PG_HOST = new Token<string>("PG_HOST");
 export const PG_PORT = new Token<number>("PG_PORT");
 export const PG_DATABASE = new Token<string>("PG_DATABASE");

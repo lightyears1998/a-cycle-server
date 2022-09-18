@@ -144,7 +144,7 @@ const protectedRouter = new Router();
 
 protectedRouter.use(
   "/:userId",
-  authentication(AuthenticationPolicy.SAME_USER_ID_FROM_PATH_PARAM)
+  authentication(AuthenticationPolicy.SAME_USER_ID_WITH_PATH_PARAM)
 );
 
 // Update password

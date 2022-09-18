@@ -1,6 +1,7 @@
 # Developer
 
-## Plan for the next generation
+## Plans for the future development
 
-- Use routing-controllers to wrap around raw koa-router.
-- Enhance router and socket parameters validation.
+- Apply stricter arguments checking.
+- Use Typescript decorators to check routing pass-in arguments.
+  - If applicable, use routing-controllers to wrap around raw koa-router can save some time for home-made argument authentication decorators.

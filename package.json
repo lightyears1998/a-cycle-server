@@ -4,7 +4,7 @@
   "description": "Server for A Cycle, the Getting-Things-Done auxiliary application.",
   "main": "src/index.ts",
   "author": "lightyears <lightyears1998@hotmail.com>",
-  "license": "BSD-3-Clause",
+  "license": "MIT",
   "engines": {
     "node": ">=15"
   },

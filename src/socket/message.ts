@@ -134,10 +134,6 @@ export class SyncModeFullEntriesResponseMessage extends Message {
   }
 }
 
-export class BoardcastMessage extends Message {
-  type = "boardcast";
-}
-
 /**
  * For debug only
  */

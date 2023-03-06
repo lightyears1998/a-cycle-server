@@ -1,7 +1,7 @@
 {
   "name": "@lightyears1998/a-cycle-server",
   "version": "1.0.0",
-  "description": "Server for A Cycle, the Getting-Things-Done auxiliary application.",
+  "description": "Centralized synchronization server of ACycle, the life-style assistant application.",
   "main": "src/index.ts",
   "author": "lightyears <lightyears1998@hotmail.com>",
   "license": "MIT",

@@ -35,6 +35,7 @@ class SyncState {
   processingMessageCount = 0;
 
   hasSyncBegun = false;
+  isClosing = false;
 
   sent = {
     "sync-full-meta-query-count": 0,
@@ -578,11 +579,19 @@ export async function doSync(socket: SyncingWebSocket) {
       socket.syncState.received["goodbye"] &&
       socket.syncState.sent["goodbye"]
     ) {
-      socket.close();
-      socket.log("Two-way synchronization finished.");
+      if (!socket.syncState.isClosing) {
+        socket.syncState.isClosing = true;
 
-      setTimeout(() => checkGcInDevelopment(socket), 10000);
+        socket.close();
+        socket.log("Two-way synchronization finished.");
+
+        setTimeout(() => checkGcInDevelopment(socket), 10000);
+      }
     }
+  });
+
+  socket.on("close", () => {
+    socket.log("Socket is closed.");
   });
 
   await initSyncFromPeerNode(socket);

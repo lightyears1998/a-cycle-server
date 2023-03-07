@@ -23,7 +23,7 @@ router.get("/:backupUuid", async (ctx) => {
 });
 
 router.post("/", async (ctx) => {
-  const { content } = ctx.request.body;
+  const { content } = ctx.request.body as any;
   if (!content) {
     throw new BadParameterError("`content` is required.");
   }

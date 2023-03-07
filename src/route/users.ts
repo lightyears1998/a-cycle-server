@@ -51,7 +51,7 @@ router.get("/", async (ctx) => {
 
 // Register a new user
 router.post("/", async (ctx) => {
-  const { passwordSha256, username } = ctx.request.body;
+  const { passwordSha256, username } = ctx.request.body as any;
 
   if (!Container.get(USER_REGISTRATION_ENABLED)) {
     throw new UserRegistrationProhibitedError();
@@ -82,7 +82,7 @@ router.post("/", async (ctx) => {
 // Request JWT Token (aka. User login)
 router.post("/:userId/jwt-tokens", async (ctx) => {
   const { userId } = ctx.params;
-  const { passwordSha256 } = ctx.request.body;
+  const { passwordSha256 } = ctx.request.body as any;
 
   if (!passwordSha256) {
     throw new BadParameterError("`passwordSha256` is required.");
@@ -111,7 +111,7 @@ router.post("/:userId/jwt-tokens", async (ctx) => {
 // Reset password
 router.get("/:userId/password/reset", async (ctx) => {
   const { userId } = ctx.params;
-  const { adminToken, passwordSha256 } = ctx.request.body;
+  const { adminToken, passwordSha256 } = ctx.request.body as any;
 
   if (!adminToken) {
     throw new BadParameterError("`adminToken` is required.");
@@ -150,7 +150,7 @@ protectedRouter.use(
 // Update password
 protectedRouter.put("/:userId/password", async (ctx) => {
   const { userId } = ctx.params;
-  const { passwordSha256 } = ctx.request.body;
+  const { passwordSha256 } = ctx.request.body as any;
 
   if (!passwordSha256) {
     throw new BadParameterError("`passwordSha256` is required.");

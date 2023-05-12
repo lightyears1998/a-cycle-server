@@ -1,14 +1,14 @@
 import { WebSocketServer } from "ws";
 import { buildMessageStreammingWebSocket } from "./message-streaming";
 import { authenticateWebSocket } from "./authentication";
-import { syncEntriesViaSocket } from "./sync";
+import { buildSyncingWebSocket, syncEntries } from "./sync";
 
 export function setupWebsocketServer(server: WebSocketServer) {
   server.on("connection", async (socket, request) => {
     // Enable message streaming
     const messageSocket = buildMessageStreammingWebSocket(socket);
 
-    // Authenticate user and node
+    // Authenticate user
     const authenticatedSocket = authenticateWebSocket(messageSocket, request);
     if (!authenticatedSocket) {
       messageSocket.close();
@@ -16,6 +16,11 @@ export function setupWebsocketServer(server: WebSocketServer) {
     }
 
     // Sync entries
-    syncEntriesViaSocket(authenticatedSocket);
+    try {
+      const syncingSocket = buildSyncingWebSocket(authenticatedSocket);
+      await syncEntries(syncingSocket);
+    } finally {
+      socket.close();
+    }
   });
 }

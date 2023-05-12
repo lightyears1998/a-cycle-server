@@ -1,6 +1,6 @@
 import "reflect-metadata";
 import koa from "koa";
-import { checkGcInDevelopmentEnvironment, logger } from "./util";
+import { checkGcInDevelopmentEnvironment, logger } from "./utils";
 import responseTimeMiddleware from "koa-response-time";
 import compressMiddleware from "koa-compress";
 import corsMiddleware from "@koa/cors";

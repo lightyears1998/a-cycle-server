@@ -5,7 +5,7 @@ import {
   ServerError,
   UserAuthenticationError,
 } from "../error";
-import { APP_NAME, getJwtTokenFromHttpAuthenticationHeader } from "../util";
+import { APP_NAME, getJwtTokenFromHttpAuthenticationHeader } from "../utils";
 import { HandshakeMessage } from "./message";
 import { MessageStreamingWebsocket } from "./message-streaming";
 import jwt, { JwtPayload } from "jsonwebtoken";

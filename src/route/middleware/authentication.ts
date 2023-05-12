@@ -3,7 +3,7 @@ import { Container } from "typedi";
 import { JWT_SECRET_TOKEN } from "../../env";
 import { UserAuthenticationError } from "../../error";
 import jwt from "jsonwebtoken";
-import { getJwtTokenFromHttpAuthenticationHeader } from "../../util";
+import { getJwtTokenFromHttpAuthenticationHeader } from "../../utils";
 import type { JsonObject } from "type-fest";
 import { isObject } from "class-validator";
 

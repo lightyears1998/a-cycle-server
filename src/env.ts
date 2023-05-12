@@ -1,7 +1,7 @@
 import { Container, Token } from "typedi";
 import Randomstring from "randomstring";
 import dotenv from "dotenv";
-import { isDevelopmentEnvironment, isTrue } from "./util";
+import { isDevelopmentEnvironment, isTrue } from "./utils";
 
 dotenv.config();
 

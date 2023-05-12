@@ -1,6 +1,6 @@
 import { IMiddleware } from "koa-router";
 import path from "path";
-import { APP_ROOT_DIR, logger } from "../../util";
+import { APP_ROOT_DIR, logger } from "../../utils";
 import { InternalServerError, ServerError } from "../../error";
 import { Context } from "koa";
 

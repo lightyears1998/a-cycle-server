@@ -14,8 +14,8 @@ export const contentNormalizationMiddleware: IMiddleware = async (
 ) => {
   const ret = await next();
 
-  if (ctx.body && typeof ctx.body === "object") {
-    if ("errors" in ctx.body || "payload" in ctx.body) {
+  if (typeof ctx.body === "object") {
+    if (["errors", "payload"].some((attr) => attr in ctx.body)) {
       ctx.body = normalizeObjectKindResponseBody(ctx.body);
     } else {
       ctx.body = wrapResponseBody(ctx.body);

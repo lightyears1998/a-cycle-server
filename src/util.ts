@@ -6,22 +6,27 @@ export const APP_ROOT_DIR = __dirname;
 
 export const logger = debug(APP_NAME);
 
-export function isTrue(val: undefined | boolean | string) {
-  if (typeof val === "undefined") {
-    return false;
-  }
+export function isTrue(val: undefined | boolean | string): boolean {
+  switch (typeof val) {
+    case "undefined":
+      return false;
 
-  if (typeof val === "boolean") {
-    return val;
-  }
+    case "boolean":
+      return val;
 
+    default:
+      return isTrueString(val);
+  }
+}
+
+function isTrueString(val: string): boolean {
   if (Number(val) > 0) {
     return true;
   }
 
-  const str = val.toLowerCase();
-  for (const positiveWord of ["y", "yes", "true"]) {
-    if (str === positiveWord) {
+  const str = String(val).toLowerCase();
+  for (const word of ["y", "yes", "true"]) {
+    if (str === word) {
       return true;
     }
   }

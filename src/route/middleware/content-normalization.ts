@@ -1,6 +1,12 @@
 import { IMiddleware } from "koa-router";
 import { ServerError } from "../../error";
 
+interface FormalResponseBody {
+  errors: ServerError[];
+  payload: Record<string, unknown> | null;
+  timestamp: string;
+}
+
 /** Middleware used for normalizing RESTful response */
 export const contentNormalizationMiddleware: IMiddleware = async (
   ctx,
@@ -10,25 +16,32 @@ export const contentNormalizationMiddleware: IMiddleware = async (
 
   if (ctx.body && typeof ctx.body === "object") {
     if ("errors" in ctx.body || "payload" in ctx.body) {
-      // Normalize errors
-      ctx.body.errors = normalizeErrors(ctx.body.errors);
-
-      // Normalize payload
-      ctx.body.payload = ctx.body.payload || {};
-
-      // Attach timestamp
-      ctx.body.timestamp = new Date().toISOString();
+      ctx.body = normalizeObjectKindResponseBody(ctx.body);
     } else {
-      ctx.body = {
-        errors: [],
-        payload: ctx.body,
-        timestamp: new Date().toISOString(),
-      };
+      ctx.body = wrapResponseBody(ctx.body);
     }
   }
 
   return ret;
 };
+
+function normalizeObjectKindResponseBody(
+  body: FormalResponseBody
+): FormalResponseBody {
+  return {
+    errors: normalizeErrors(body.errors),
+    payload: body.payload || {},
+    timestamp: new Date().toISOString(),
+  };
+}
+
+function wrapResponseBody(body: Record<string, unknown>): FormalResponseBody {
+  return {
+    errors: [],
+    payload: body,
+    timestamp: new Date().toISOString(),
+  };
+}
 
 function normalizeErrors(errors: Error[]): ServerError[] {
   errors = errors || [];

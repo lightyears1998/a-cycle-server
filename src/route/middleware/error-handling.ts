@@ -21,29 +21,38 @@ export const errorHandlingMiddleware: IMiddleware = async (ctx, next) => {
   } catch (err) {
     if (err instanceof Error && !(err instanceof ServerError)) {
       logger(err);
-
-      err = new InternalServerError(
-        JSON.stringify({
-          name: err.name,
-          message: err.message && maskAppRoot(err.message),
-          cause: err.cause,
-          stack: err.stack && maskAppRoot(err.stack),
-        })
-      );
+      err = wrapError(err);
     }
 
     if (err instanceof ServerError) {
       if (!ctx.body) {
-        ctx.body = {
-          errors: [
-            {
-              name: err.constructor.name,
-              message: err.message,
-            },
-          ],
-          payload: null,
-        };
+        ctx.body = makeResponseBodyFromError(err);
       }
     }
   }
 };
+
+function wrapError(err: Error) {
+  return new InternalServerError(
+    JSON.stringify({
+      name: err.name,
+      message: err.message && maskAppRoot(err.message),
+      cause: err.cause,
+      stack: err.stack && maskAppRoot(err.stack),
+    })
+  );
+}
+
+function makeResponseBodyFromError(
+  error: ServerError
+): Record<string, unknown> {
+  return {
+    errors: [
+      {
+        name: error.constructor.name,
+        message: error.message,
+      },
+    ],
+    payload: null,
+  };
+}

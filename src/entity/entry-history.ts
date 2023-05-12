@@ -20,18 +20,18 @@ export class HistoryCursor
     >
 {
   @IsNumber()
-  id!: string;
+  public id!: string;
 
   @IsString()
-  entryUuid!: string;
+  public entryUuid!: string;
 
   @IsDate()
-  entryUpdatedAt!: Date;
+  public entryUpdatedAt!: Date;
 
   @IsUUID(4)
-  entryUpdatedBy!: string;
+  public entryUpdatedBy!: string;
 
-  constructor(id: string, entryId: string, at: Date, by: string) {
+  public constructor(id: string, entryId: string, at: Date, by: string) {
     this.id = id;
     this.entryUuid = entryId;
     this.entryUpdatedAt = at;
@@ -42,30 +42,30 @@ export class HistoryCursor
 @Entity()
 export class EntryHistory {
   @PrimaryGeneratedColumn("increment", { type: "int8" })
-  id!: string;
+  public id!: string;
 
   @Column({ type: "int8", default: 0 })
-  parentId!: string;
+  public parentId!: string;
 
   @ManyToOne(() => User)
-  user!: User;
+  public user!: User;
 
   @Column({ type: "uuid" })
-  entryUuid!: string;
+  public entryUuid!: string;
 
   @Column({
     type: "enum",
     enum: EntryOperation,
   })
-  entryOperation!: EntryOperation;
+  public entryOperation!: EntryOperation;
 
   @Column({ type: "timestamptz" })
-  entryUpdatedAt!: Date;
+  public entryUpdatedAt!: Date;
 
   @Column({ type: "uuid" })
-  entryUpdatedBy!: string;
+  public entryUpdatedBy!: string;
 
-  toPlain(): PlainEntryHistory {
+  public toPlain(): PlainEntryHistory {
     return {
       id: this.id,
       parentId: this.parentId,
@@ -76,7 +76,7 @@ export class EntryHistory {
     };
   }
 
-  toCursor() {
+  public toCursor() {
     return new HistoryCursor(
       this.id,
       this.entryUuid,

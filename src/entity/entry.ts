@@ -13,34 +13,34 @@ export type EntryMetadata = Pick<
 @Entity()
 export class Entry implements SoftRemovableObject {
   @PrimaryGeneratedColumn("uuid")
-  uuid!: string;
+  public uuid!: string;
 
   @ManyToOne(() => User, { nullable: false })
-  user?: User;
+  public user?: User;
 
   @Column({ type: "timestamptz", nullable: true })
-  removedAt!: Date | null;
+  public removedAt!: Date | null;
 
   @Column({ nullable: false })
-  contentType!: string;
+  public contentType!: string;
 
   @Column({ type: "jsonb", default: "null" })
-  content!: JsonValue;
+  public content!: JsonValue;
 
   @Column({
     type: "timestamptz",
     nullable: false,
     default: () => "NOW()",
   })
-  createdAt!: Date;
+  public createdAt!: Date;
 
   @Column({ type: "timestamptz", nullable: false })
-  updatedAt!: Date;
+  public updatedAt!: Date;
 
   @Column({ type: "uuid", nullable: false })
-  updatedBy!: string;
+  public updatedBy!: string;
 
-  toPlain(): PlainEntry {
+  public toPlain(): PlainEntry {
     return {
       uuid: this.uuid,
       contentType: this.contentType,
@@ -52,7 +52,7 @@ export class Entry implements SoftRemovableObject {
     };
   }
 
-  getMetadata(): EntryMetadata {
+  public getMetadata(): EntryMetadata {
     return {
       uuid: this.uuid,
       createdAt: this.createdAt,

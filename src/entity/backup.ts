@@ -8,11 +8,11 @@ import {
 @Entity()
 export class Backup {
   @PrimaryGeneratedColumn("uuid")
-  uuid!: string;
+  public uuid!: string;
 
   @Column({ type: "text" })
-  content!: string;
+  public content!: string;
 
   @CreateDateColumn()
-  createdAt!: Date;
+  public createdAt!: Date;
 }

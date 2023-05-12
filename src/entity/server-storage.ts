@@ -4,8 +4,8 @@ import { Column, Entity, PrimaryColumn } from "typeorm";
 @Entity()
 export class ServerStorage {
   @PrimaryColumn()
-  key!: string;
+  public key!: string;
 
   @Column({ type: "jsonb" })
-  value!: JsonValue;
+  public value!: JsonValue;
 }

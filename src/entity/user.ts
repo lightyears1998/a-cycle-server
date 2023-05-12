@@ -14,24 +14,24 @@ export type PlainUser = Pick<User, "id" | "username">;
 @Unique("UNIQUE_USERNAME", ["username"])
 export class User implements SoftRemovableObject {
   @PrimaryGeneratedColumn("increment", { type: "int8" })
-  id!: string;
+  public id!: string;
 
   @Column({ type: "timestamptz", nullable: true })
-  removedAt!: Date | null;
+  public removedAt!: Date | null;
 
   @Column()
-  username!: string;
+  public username!: string;
 
   @Column()
-  passwordHash!: string;
+  public passwordHash!: string;
 
   @CreateDateColumn()
-  createdAt!: Date;
+  public createdAt!: Date;
 
   @UpdateDateColumn()
-  updatedAt!: Date;
+  public updatedAt!: Date;
 
-  toPlain(): PlainUser {
+  public toPlain(): PlainUser {
     return {
       id: this.id,
       username: this.username,

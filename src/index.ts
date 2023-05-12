@@ -1,6 +1,6 @@
 import "reflect-metadata";
 import koa from "koa";
-import { checkGcInDevelopment, logger } from "./util";
+import { checkGcInDevelopmentEnvironment, logger } from "./util";
 import responseTimeMiddleware from "koa-response-time";
 import compressMiddleware from "koa-compress";
 import corsMiddleware from "@koa/cors";
@@ -85,7 +85,7 @@ async function bootstrap() {
   await Promise.all([setupRestfulEndpoint(), setupWebsocketEndpoint()]);
   console.log(`Server instance ${Container.get(SERVER_UUID)} is operating.`);
 
-  checkGcInDevelopment(
+  checkGcInDevelopmentEnvironment(
     bootstrap,
     setupDatabase,
     setupEnvironmentVariables,

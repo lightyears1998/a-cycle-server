@@ -100,7 +100,7 @@ export function shouldGc(...objects: any[]) {
   }, 0);
 }
 
-export function checkGcInDevelopment(...objects: any[]) {
+export function checkGcInDevelopmentEnvironment(...objects: any[]) {
   if (isDevelopmentEnvironment()) {
     shouldGc(...objects);
   }

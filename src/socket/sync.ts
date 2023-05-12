@@ -17,7 +17,7 @@ import { TRANSMISSION_PAGING_SIZE } from "../env";
 import { BadParameterError, HistoryCursorInvalidError } from "../error";
 import { getManager } from "../db";
 import { Node } from "../entity/node";
-import { EntryHistory, HistoryCursor } from "../entity/entry-history";
+import { EntryHistory } from "../entity/entry-history";
 import { HistoryService } from "../service/history";
 import { In, MoreThan } from "typeorm";
 import { Entry } from "../entity/entry";
@@ -28,64 +28,12 @@ import {
   checkGcInDevelopmentEnvironment,
   isDevelopmentEnvironment,
 } from "../util";
+import { SyncState } from "./sync-state";
 
 const manager = getManager();
 const entryService = Container.get(EntryService);
 const historyService = Container.get(HistoryService);
 const nodeService = Container.get(NodeService);
-
-class SyncState {
-  processingMessageCount = 0;
-
-  hasSyncBegun = false;
-  isClosing = false;
-
-  sent = {
-    "sync-full-meta-query-count": 0,
-    "sync-full-entries-query-count": 0,
-    "sync-recent-request-count": 0,
-    goodbye: false,
-  };
-
-  received = {
-    "sync-full-meta-response-count": 0,
-    "sync-full-entries-response-count": 0,
-    "sync-full-entries-response-first-cursor": null as HistoryCursor | null,
-    "sync-recent-response-count": 0,
-    goodbye: false,
-  };
-
-  isSyncRecentOngoing = (): boolean => {
-    return (
-      this.sent["sync-recent-request-count"] >
-      this.received["sync-recent-response-count"]
-    );
-  };
-
-  isSyncFullExecuted = (): boolean => {
-    return this.sent["sync-full-meta-query-count"] > 0;
-  };
-
-  isSyncFullOngoing = (): boolean => {
-    return (
-      this.sent["sync-full-meta-query-count"] > 0 &&
-      (this.sent["sync-full-meta-query-count"] >
-        this.received["sync-full-meta-response-count"] ||
-        this.sent["sync-full-entries-query-count"] >
-          this.received["sync-full-entries-response-count"])
-    );
-  };
-
-  isSyncFullSucceed = (): boolean => {
-    return (
-      this.sent["sync-full-meta-query-count"] > 0 &&
-      this.sent["sync-full-meta-query-count"] <=
-        this.received["sync-full-meta-response-count"] &&
-      this.sent["sync-full-entries-query-count"] <=
-        this.received["sync-full-entries-response-count"]
-    );
-  };
-}
 
 type MessageHandler = (socket: SyncingWebSocket, message: any) => Promise<void>;
 

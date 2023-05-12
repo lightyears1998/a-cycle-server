@@ -25,16 +25,13 @@ export class HistoryService {
 
   private processingCount = new Map<UserId, number>();
 
-  get queueIsProcessing(): boolean {
-    return this.queue.length > 0;
-  }
-
   private increaseProcessingCount(userId: UserId) {
     if (!this.processingCount.get(userId)) {
       this.processingCount.set(userId, 0);
       this.logger(`Starting procession for user ${userId}.`);
       this.processQueue();
     }
+
     this.processingCount.set(
       userId,
       (this.processingCount.get(userId) as number) + 1
@@ -46,6 +43,7 @@ export class HistoryService {
       userId,
       (this.processingCount.get(userId) as number) - 1
     );
+
     if (!this.processingCount.get(userId)) {
       this.processingCount.delete(userId);
       this.logger(`Finishing procession for user ${userId}.`);
@@ -57,51 +55,68 @@ export class HistoryService {
       `Triggered queue processing. (Expected queue length: 1, actual queue length: ${this.queue.length})`
     );
 
-    while (this.queueIsProcessing) {
+    while (this.queue.length > 0) {
       this.logger(`Remaining queue length: ${this.queue.length}`);
+
       const [unwrittenHistory, onSavedCallback] = this.queue.shift() as [
         UnwrittenHistory,
         OnSavedCallback
       ];
 
-      let attemptCount = 0;
-      while (attemptCount < this.MAX_RETRY) {
-        try {
-          await this.manager.transaction("SERIALIZABLE", async (manager) => {
-            const { lastHistoryId } = await manager
-              .createQueryBuilder(EntryHistory, "history")
-              .select([])
-              .addSelect("COALESCE(MAX(history.id), 0)", "lastHistoryId")
-              .where({
-                user: unwrittenHistory.user,
-              })
-              .getRawOne();
-
-            const history = manager.create(
-              EntryHistory,
-              Object.assign({}, unwrittenHistory, {
-                parentId: String(lastHistoryId),
-              } as Pick<EntryHistory, "parentId">)
-            ) as EntryHistory;
-
-            const savedHistory = await manager.save(EntryHistory, history);
-            onSavedCallback(savedHistory);
-            this.decreaseProcessingCount(savedHistory.user.id);
-          });
-
-          break;
-        } catch (err) {
-          attemptCount++;
-
-          if (attemptCount >= this.MAX_RETRY) {
-            throw err;
-          }
-        }
-      }
+      const savedHistory = await this.tryWriteHistory(unwrittenHistory);
+      onSavedCallback(savedHistory);
     }
   }
 
-  commitEntryOperation(entry: Entry, operation: EntryOperation) {
+  private async tryWriteHistory(
+    unwrittenHistory: UnwrittenHistory
+  ): Promise<EntryHistory> {
+    let savedHistory: EntryHistory;
+
+    let attemptCount = 0;
+    let lastError;
+
+    while (attemptCount < this.MAX_RETRY) {
+      try {
+        savedHistory = await this.tryWriteHistoryOnce(unwrittenHistory);
+        this.decreaseProcessingCount(savedHistory.user.id);
+        return savedHistory;
+      } catch (err) {
+        attemptCount++;
+        lastError = err;
+      }
+    }
+
+    this.logger(lastError);
+    throw new Error("Fail to write entry history.");
+  }
+
+  async tryWriteHistoryOnce(
+    unwrittenHistory: UnwrittenHistory
+  ): Promise<EntryHistory> {
+    return this.manager.transaction("SERIALIZABLE", async (manager) => {
+      const { lastHistoryId } = await manager
+        .createQueryBuilder(EntryHistory, "history")
+        .select([])
+        .addSelect("COALESCE(MAX(history.id), 0)", "lastHistoryId")
+        .where({
+          user: unwrittenHistory.user,
+        })
+        .getRawOne();
+
+      const history = manager.create(
+        EntryHistory,
+        Object.assign({}, unwrittenHistory, {
+          parentId: String(lastHistoryId),
+        } as Pick<EntryHistory, "parentId">)
+      ) as EntryHistory;
+
+      const savedHistory = await manager.save(EntryHistory, history);
+      return savedHistory;
+    });
+  }
+
+  public commitEntryOperation(entry: Entry, operation: EntryOperation) {
     const unwrittenHistory = this.manager.create(EntryHistory, {
       user: entry.user,
       entryOperation: operation,
@@ -117,7 +132,7 @@ export class HistoryService {
     });
   }
 
-  async locateHistoryCursorOfUser(
+  public async locateHistoryCursorOfUser(
     unverifiedHistoryCursor: Partial<EntryHistory>,
     userId: string
   ): Promise<EntryHistory | null> {
@@ -146,7 +161,7 @@ export class HistoryService {
     return cursor;
   }
 
-  async getLastestCursor(userId: string): Promise<HistoryCursor | null> {
+  public async getLastestCursor(userId: string): Promise<HistoryCursor | null> {
     const history = await this.manager.findOne(EntryHistory, {
       where: {
         user: {

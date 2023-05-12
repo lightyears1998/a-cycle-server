@@ -35,7 +35,9 @@ const manager = getManager();
 const userService = Container.get(UserService);
 const entryService = Container.get(EntryService);
 
-// Check if a username exists
+/**
+ * Check if a username exists
+ */
 router.get("/", async (ctx) => {
   const username = String(ctx.query.username);
 
@@ -49,7 +51,9 @@ router.get("/", async (ctx) => {
   }
 });
 
-// Register a new user
+/**
+ * Register a new user
+ */
 router.post("/", async (ctx) => {
   const { passwordSha256, username } = ctx.request.body as any;
 
@@ -79,7 +83,9 @@ router.post("/", async (ctx) => {
   ctx.body = { user: user.toPlain() };
 });
 
-// Request JWT Token (aka. User login)
+/**
+ * Request a JWT Token (aka. User login)
+ */
 router.post("/:userId/jwt-tokens", async (ctx) => {
   const { userId } = ctx.params;
   const { passwordSha256 } = ctx.request.body as any;
@@ -108,7 +114,9 @@ router.post("/:userId/jwt-tokens", async (ctx) => {
   ctx.body = { token };
 });
 
-// Reset password
+/**
+ * Reset password
+ */
 router.get("/:userId/password/reset", async (ctx) => {
   const { userId } = ctx.params;
   const { adminToken, passwordSha256 } = ctx.request.body as any;
@@ -147,7 +155,9 @@ protectedRouter.use(
   authentication(AuthenticationPolicy.SAME_USER_ID_WITH_PATH_PARAM)
 );
 
-// Update password
+/**
+ * Update password
+ */
 protectedRouter.put("/:userId/password", async (ctx) => {
   const { userId } = ctx.params;
   const { passwordSha256 } = ctx.request.body as any;
@@ -169,7 +179,9 @@ protectedRouter.put("/:userId/password", async (ctx) => {
   ctx.body = { user: user.toPlain() };
 });
 
-// Get entries
+/**
+ * Get entries
+ */
 protectedRouter.get("/:userId/entries", async (ctx) => {
   const { userId } = ctx.params;
   const { uid, page = 1 } = ctx.query;
@@ -190,7 +202,9 @@ protectedRouter.get("/:userId/entries", async (ctx) => {
   ctx.body = { entries: entries.map((entry) => entry.toPlain()) };
 });
 
-// Get an entry
+/**
+ * Get an entry
+ */
 protectedRouter.get("/:userId/entries/:entryUuid", async (ctx) => {
   const { userId, entryUuid } = ctx.params;
 
@@ -201,7 +215,9 @@ protectedRouter.get("/:userId/entries/:entryUuid", async (ctx) => {
   };
 });
 
-// Create an entry
+/**
+ * Create an entry
+ */
 protectedRouter.post("/:userId/entries", async (ctx) => {
   const { userId } = ctx.params;
   const createdAt = new Date();
@@ -221,7 +237,9 @@ protectedRouter.post("/:userId/entries", async (ctx) => {
   ctx.body = { entry: savedEntry.toPlain() };
 });
 
-// Update an entry
+/**
+ * Update an entry
+ */
 protectedRouter.put("/:userId/entries/:entryUuid", async (ctx) => {
   const { userId, entryUuid } = ctx.params;
   const updatedAt = new Date();
@@ -248,7 +266,9 @@ protectedRouter.put("/:userId/entries/:entryUuid", async (ctx) => {
   };
 });
 
-// Remove an entry
+/**
+ * Remove an entry
+ */
 protectedRouter.del("/:userId/entries/:entryUuid", async (ctx) => {
   const { userId, entryUuid } = ctx.params;
 

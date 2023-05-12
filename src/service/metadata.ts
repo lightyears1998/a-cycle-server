@@ -10,16 +10,19 @@ export class MetadataService {
   private manager!: EntityManager;
 
   async get<T extends JsonValue>(metaToken: Token<T>): Promise<T | null> {
-    for (const [token, key, defaultValue] of metadataTuples) {
-      if (token === metaToken) {
-        const storage = await this.manager.findOne(ServerStorage, {
-          where: {
-            key: key,
-          },
-        });
+    const matchedTuple = metadataTuples
+      .filter((tuple) => tuple[0] === metaToken)
+      .shift();
 
-        return storage ? (storage.value as T) : (defaultValue as T);
-      }
+    if (matchedTuple) {
+      const [_, key, defaultValue] = matchedTuple;
+      const storage = await this.manager.findOne(ServerStorage, {
+        where: {
+          key: key,
+        },
+      });
+
+      return storage ? (storage.value as T) : (defaultValue as T);
     }
 
     return null;

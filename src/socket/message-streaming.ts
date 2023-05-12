@@ -40,7 +40,7 @@ function replyUnrecognizedMessage(
   );
 }
 
-export const messageStreammingWebSocketize = (
+export const buildMessageStreammingWebSocket = (
   socket: WebSocket
 ): MessageStreamingWebsocket => {
   const patched = socket as MessageStreamingWebsocket;

@@ -1,18 +1,15 @@
 import { WebSocketServer } from "ws";
-import { messageStreammingWebSocketize } from "./message-streaming";
-import { authenticatedWebSocketize } from "./authentication";
+import { buildMessageStreammingWebSocket } from "./message-streaming";
+import { authenticateWebSocket } from "./authentication";
 import { syncEntriesViaSocket } from "./sync";
 
 export function setupWebsocketServer(server: WebSocketServer) {
   server.on("connection", async (socket, request) => {
     // Enable message streaming
-    const messageSocket = messageStreammingWebSocketize(socket);
+    const messageSocket = buildMessageStreammingWebSocket(socket);
 
     // Authenticate user and node
-    const authenticatedSocket = authenticatedWebSocketize(
-      messageSocket,
-      request
-    );
+    const authenticatedSocket = authenticateWebSocket(messageSocket, request);
     if (!authenticatedSocket) {
       messageSocket.close();
       return;
